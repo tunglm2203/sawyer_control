@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from sawyer_control.srv import *
+from sawyer_control.srv import image, imageResponse
 import rospy
 from sensor_msgs.msg import Image as Image_msg
 import cv2
@@ -22,9 +22,9 @@ class Latest_observation(object):
         self.d_img_cropped_8bit = None
         self.d_img_msg = None
 
+
 class KinectRecorder(object):
     def __init__(self):
-
         rospy.Subscriber("/kinect2/hd/image_color", Image_msg, self.store_latest_image)
 
         self.ltob = Latest_observation()
@@ -40,7 +40,7 @@ class KinectRecorder(object):
     def store_latest_image(self, data):
         self.ltob.img_msg = data
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")  # (1920, 1080)
-        self.ltob.img_cv2 = self.crop_highres(cv_image) #(1000, 1000)
+        self.ltob.img_cv2 = self.crop_highres(cv_image)  # (1000, 1000)
 
     def crop_highres(self, cv_image):
         startcol = 180
@@ -51,18 +51,81 @@ class KinectRecorder(object):
         cv_image = cv2.resize(cv_image, (0, 0), fx=0.66666666666, fy=0.925925926, interpolation=cv2.INTER_AREA)
         return cv_image
 
+
+class RealSenseRecorder(object):
+    def __init__(self):
+        rospy.Subscriber("/camera/color/image_raw", Image_msg, self.store_latest_image)
+
+        self.ltob = Latest_observation()
+        self.ltob_aux1 = Latest_observation()
+
+        self.bridge = CvBridge()
+
+        def spin_thread():
+            rospy.spin()
+
+        thread.start_new(spin_thread, ())
+
+    def store_latest_image(self, data):
+        self.ltob.img_msg = data
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")  # (480, 640)
+        self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
+
+    def crop_highres(self, cv_image):
+        startcol = 70
+        startrow = 0
+        endcol = startcol + 480
+        endrow = startrow + 480
+        cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        cv_image = cv2.resize(cv_image, (84, 84))
+        return cv_image
+
+
+class LogitechRecorder(object):
+    def __init__(self):
+        rospy.Subscriber("/usb_cam/image_raw", Image_msg, self.store_latest_image)
+
+        self.ltob = Latest_observation()
+        self.ltob_aux1 = Latest_observation()
+
+        self.bridge = CvBridge()
+
+        def spin_thread():
+            rospy.spin()
+
+        thread.start_new(spin_thread, ())
+
+    def store_latest_image(self, data):
+        self.ltob.img_msg = data
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")  # (480, 640)
+        self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
+
+    def crop_highres(self, cv_image):
+        startcol = 70
+        startrow = 0
+        endcol = startcol + 480
+        endrow = startrow + 480
+        cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        cv_image = cv2.resize(cv_image, (84, 84))
+        return cv_image
+
+
 def get_observation(unused):
-    img = kr.ltob.img_cv2
+    img = cam.ltob.img_cv2
     img = np.array(img)
     image = img.flatten().tolist()
     return imageResponse(image)
+
 
 def image_server():
     s = rospy.Service('images', image, get_observation)
     rospy.spin()
 
+
 if __name__ == "__main__":
     rospy.init_node('image_server', anonymous=True)
-    kr = KinectRecorder()
+    # You should choose the corresponding camera
+    # cam = KinectRecorder()
+    cam = RealSenseRecorder()
+    # cam = LogitechRecorder()
     image_server()
-
