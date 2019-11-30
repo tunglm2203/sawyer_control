@@ -7,12 +7,12 @@ Sawyer Control is a repository that enables RL algorithms to control Rethink Saw
 ## Setup Instructions:
 1. Make sure ros kinetic is installed and make sure to add source /opt/ros/kinetic/setup.bash to your bashrc
 2. Install intera interface from the rethink website and set up intera.sh with the correct ip and hostname of your robot
-3. Git clone the following in ~/ros_ws/src/:
-* Urdfdom: https://github.com/ros/urdfdom.git
-* urdf_parser_py: https://github.com/ros/urdf_parser_py
-* pykdl utils: https://github.com/gt-ros-pkg/hrl-kdl
+3. Git clone the following in `~/catkin_ws/src/`:
+    * Urdfdom: https://github.com/ros/urdfdom.git
+    * urdf_parser_py: https://github.com/ros/urdf_parser_py
+    * pykdl utils: https://github.com/gt-ros-pkg/hrl-kdl
 4. switch to the indigo-devel branch on urdf_parser_py and hrl_kdl
-5. run `git clone git@github.com:tunglm2203/sawyer_control.git` in ~/ros_ws/src/
+5. run `git clone https://github.com/mdalal2020/sawyer_control.git` in ~/catkin_ws/src/
 6. run `catkin_make`
 7. Make sure you are on system python
 8. run `pip install -r system_python_requirements.txt`
@@ -21,7 +21,14 @@ Sawyer Control is a repository that enables RL algorithms to control Rethink Saw
 11. run `conda create -n <env_name> python=3.5 anaconda`
 12. source activate your python 3 conda environment
 13. run `pip install -r python3_requirements.txt`
-14. install kinect2 bridge: https://github.com/code-iai/iai_kinect2/tree/master/kinect2_bridge
+14. install camera package for ROS, git clone corresponding device in `~/catkin_ws/src/`:
+    * Kinect for Windows v2: https://github.com/code-iai/iai_kinect2/tree/master/kinect2_bridge
+    * Intel RealSense: https://github.com/IntelRealSense/realsense-ros.git
+    * Logitech Camera: https://github.com/ros-drivers/usb_cam.git
+
+Note: You should choose the corresponding camera in `main()` function of `script/image_server.py`. Default is RealSense
+camera. When using Logitech camera, you have to specify the address of device in `launch/logitech_camera.launch`, 
+default is `/dev/video3`.
 
 Example Bashrc:
 ```
@@ -30,7 +37,7 @@ source ~/catkin_ws/devel/setup.bash
 export PATH="$PATH:$HOME/anaconda2/bin"
 export PYTHONPATH=$PYTHONPATH:/opt/ros/kinetic/lib/python2.7/dist-packages/:
 ```
-Useful aliases:
+Useful aliases (Using suitable `alias` for your camera):
 ```
 alias saw="cd ~/catkin_ws/; ./intera.sh; cd ~/"
 alias enable="rosrun intera_interface enable_robot.py -e"
@@ -39,7 +46,10 @@ alias reset="rosrun intera_interface enable_robot.py -r"
 alias stop="rosrun intera_interface enable_robot.py -S"
 alias status="rosrun intera_interface enable_robot.py -s"
 alias exp_nodes="roslaunch ~/catkin_ws/src/sawyer_control/exp_nodes.launch"
+
 alias kinect="roslaunch kinect2_bridge kinect2_bridge.launch"
+alias realsense="roslaunch realsense2_camera rs_camera.launch"
+alias logitech="roslaunch sawyer_control logitech_camera.launch"
 ```
 
 ## Environments
