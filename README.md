@@ -27,7 +27,8 @@ Sawyer Control is a repository that enables RL algorithms to control Rethink Saw
     * Logitech Camera: https://github.com/ros-drivers/usb_cam.git
 
 Note: You should choose the corresponding camera in `main()` function of `script/image_server.py`. Default is RealSense
-camera. 
+camera. When using Logitech camera, you have to specify the address of device in `launch/logitech_camera.launch`, 
+default is `/dev/video3`.
 
 Example Bashrc:
 ```
