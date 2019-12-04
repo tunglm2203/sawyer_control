@@ -25,6 +25,7 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
             position_action_scale=1/10,
             config_name = 'base_config',
             fix_goal=False,
+            fixed_goal=(1., 1., 1., 1.),
             max_speed = 0.05,
             reset_free=False,
             img_start_col=350, #can range from  0-999
@@ -51,6 +52,7 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
         self.in_reset = True
         self._state_goal = None
         self.fix_goal = fix_goal
+        self.fixed_goal = np.array(fixed_goal)
 
         self.pos_control_reset_position = self.config.POSITION_RESET_POS
         self.reset_free = reset_free
@@ -415,7 +417,7 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
     def sample_goals(self, batch_size):
         if self.fix_goal:
             goals = np.repeat(
-                self._state_goal.copy()[None],
+                self.fixed_goal.copy()[None],
                 batch_size,
                 0
             )
