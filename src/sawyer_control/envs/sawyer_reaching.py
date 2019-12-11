@@ -30,7 +30,8 @@ class SawyerReachXYZEnv(SawyerEnvBase):
         self.goal_space = Box(goal_low, goal_high, dtype=np.float32)
         self.indicator_threshold=indicator_threshold
         self.reward_type = reward_type
-        self._state_goal = np.array(fixed_goal)
+        self._state_goal = None
+        self.fixed_goal = np.array(fixed_goal)
 
     def _get_obs(self):
         if self.action_mode=='position':

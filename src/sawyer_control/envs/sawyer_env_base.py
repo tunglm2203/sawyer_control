@@ -25,7 +25,6 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
             position_action_scale=1/10,
             config_name = 'base_config',
             fix_goal=False,
-            fixed_goal=(1., 1., 1., 1.),
             max_speed = 0.05,
             reset_free=False,
             img_start_col=350, #can range from  0-999
@@ -52,7 +51,6 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
         self.in_reset = True
         self._state_goal = None
         self.fix_goal = fix_goal
-        self.fixed_goal = np.array(fixed_goal)
 
         self.pos_control_reset_position = self.config.POSITION_RESET_POS
         self.reset_free = reset_free
@@ -358,9 +356,9 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
         image = self.request_image()
         if image is None:
             raise Exception('Unable to get image from image server')
-        image = np.array(image).reshape(1000, 1000, 3)
+        image = np.array(image).reshape(480, 480, 3)
         image = copy.deepcopy(image)
-        image = cv2.resize(image, (0, 0), fx=width/1000, fy=height/1000, interpolation=cv2.INTER_AREA)
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         image = np.asarray(image).reshape(width, height, 3)
         return image
 
