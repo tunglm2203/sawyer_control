@@ -23,7 +23,9 @@ if __name__ == "__main__":
     for _ in range(10000):
         img = request_observation()
         img = np.array(img)
+        img = img.reshape(480, 480, 3)
         img = img / 255.
+        img = cv2.resize(img, (84, 84))
         img = img.reshape(84, 84, 3)
 
         cv2.imshow("CV Image", img)

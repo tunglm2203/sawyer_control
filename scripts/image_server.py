@@ -110,6 +110,35 @@ class LogitechRecorder(object):
         return cv_image
 
 
+class KinectSimRecorder(object):
+    def __init__(self):
+        rospy.Subscriber("/camera/color/image_raw", Image_msg, self.store_latest_image)
+
+        self.ltob = Latest_observation()
+        self.ltob_aux1 = Latest_observation()
+
+        self.bridge = CvBridge()
+
+        def spin_thread():
+            rospy.spin()
+
+        thread.start_new(spin_thread, ())
+
+    def store_latest_image(self, data):
+        self.ltob.img_msg = data
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")  # (480, 640)
+        self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
+
+    def crop_highres(self, cv_image):
+        startcol = 70
+        startrow = 0
+        endcol = startcol + 480
+        endrow = startrow + 480
+        cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        # cv_image = cv2.resize(cv_image, (84, 84))
+        return cv_image
+
+
 def get_observation(unused):
     img = cam.ltob.img_cv2
     img = np.array(img)
@@ -126,6 +155,7 @@ if __name__ == "__main__":
     rospy.init_node('image_server', anonymous=True)
     # You should choose the corresponding camera
     # cam = KinectRecorder()
-    cam = RealSenseRecorder()
+    # cam = RealSenseRecorder()
     # cam = LogitechRecorder()
+    cam = KinectSimRecorder()
     image_server()
