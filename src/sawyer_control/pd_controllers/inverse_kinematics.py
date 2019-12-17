@@ -97,7 +97,7 @@ def joint_state_from_cmd(cmd):
 def main():
     rospy.init_node("inverse_kinematics_test")
     pose = get_pose_stamped(0.45, 0.16, 0.21, EXAMPLE_O)
-    print get_joint_angles(pose)
+    print(get_joint_angles(pose))
 
 if __name__ == '__main__':
     main()
