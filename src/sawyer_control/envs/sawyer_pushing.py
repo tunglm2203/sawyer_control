@@ -5,6 +5,17 @@ from sawyer_control.envs.sawyer_env_base import SawyerEnvBase
 from sawyer_control.core.serializable import Serializable
 
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 class SawyerPushXYEnv(SawyerEnvBase):
     ''' Must Wrap with Image Env to use!'''
 
@@ -12,7 +23,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  fixed_goal=(0.5, 1, 1, 1),
                  pause_on_reset=True,
                  action_mode='position',
-                 z=.23128,
+                 z=.06,
                  goal_low=None,
                  goal_high=None,
                  **kwargs
@@ -40,7 +51,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
         obj_goal = np.concatenate((goal[:2], [self.z]))
         ee_goal = np.concatenate((goal[2:4], [self.z]))
         self._position_act(obj_goal - self._get_endeffector_pose()[:3])
-        input('place object at end effector location and press enter')
+        input(bcolors.OKGREEN + 'place object at end effector location and press enter' + bcolors.ENDC)
         self._position_act(ee_goal - self._get_endeffector_pose()[:3])
 
     def _reset_robot(self):
@@ -48,7 +59,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
         self._safe_move_to_neutral()
         self.in_reset = False
         if self.pause_on_reset:
-            input('move object to reset position and press enter')
+            input(bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
 
     def reset(self):
         self._reset_robot()
