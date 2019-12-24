@@ -1,4 +1,4 @@
 imutils
 lxml
 scipy==1.2.1
-opencv-python==3.1.0.0 --ignore-installed
+opencv-python==3.1.0.0
