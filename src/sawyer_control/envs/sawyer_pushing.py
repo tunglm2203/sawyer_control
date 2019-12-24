@@ -3,6 +3,8 @@ import numpy as np
 from gym.spaces import Box
 from sawyer_control.envs.sawyer_env_base import SawyerEnvBase
 from sawyer_control.core.serializable import Serializable
+from sawyer_control.envs.client_server_utils import ClientProcess
+import time
 
 
 class bcolors:
@@ -42,6 +44,11 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.z = z
 
+        self.use_gazebo_auto = True
+        if self.use_gazebo_auto:
+            self.client = ClientProcess()
+        self.pos_object_reset_position = self.config.OBJ_RESET_POS
+
     @property
     def goal_dim(self):
         return 4  # xy for object position, xy for end effector position
@@ -51,7 +58,21 @@ class SawyerPushXYEnv(SawyerEnvBase):
         obj_goal = np.concatenate((goal[:2], [self.z]))
         ee_goal = np.concatenate((goal[2:4], [self.z]))
         self._position_act(obj_goal - self._get_endeffector_pose()[:3])
-        input(bcolors.OKGREEN + 'place object at end effector location and press enter' + bcolors.ENDC)
+        if self.use_gazebo_auto:
+            print(bcolors.OKGREEN + 'place object at end effector location and press enter' +
+                  bcolors.ENDC)
+            # TUNG: +- 0.05 to avoid collision since object right below gripper
+            args = dict(x=goal[0] + 0.05,
+                        y=goal[1] - 0.05,
+                        z=self.pos_object_reset_position[2])
+            msg = dict(func='set_object_los', args=args)
+            self.client.sending(msg, sleep_before=self.config.SLEEP_BEFORE_SENDING_CMD_SOCKET,
+                                sleep_after=self.config.SLEEP_BETWEEN_2_CMDS)
+            self.client.sending(msg, sleep_before=0,
+                                sleep_after=self.config.SLEEP_AFTER_SENDING_CMD_SOCKET)
+        else:
+            input(bcolors.OKGREEN + 'place object at end effector location and press enter' +
+                  bcolors.ENDC)
         self._position_act(ee_goal - self._get_endeffector_pose()[:3])
 
     def _reset_robot(self):
@@ -59,7 +80,19 @@ class SawyerPushXYEnv(SawyerEnvBase):
         self._safe_move_to_neutral()
         self.in_reset = False
         if self.pause_on_reset:
-            input(bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
+            if self.use_gazebo_auto:
+                print(bcolors.OKBLUE+'move object to reset position and press enter'+bcolors.ENDC)
+                args = dict(x=self.pos_object_reset_position[0],
+                            y=self.pos_object_reset_position[1],
+                            z=self.pos_object_reset_position[2])
+                msg = dict(func='set_object_los', args=args)
+                self.client.sending(msg, sleep_before=self.config.SLEEP_BEFORE_SENDING_CMD_SOCKET,
+                                    sleep_after=self.config.SLEEP_BETWEEN_2_CMDS)
+                self.client.sending(msg, sleep_before=0,
+                                    sleep_after=self.config.SLEEP_AFTER_SENDING_CMD_SOCKET)
+            else:
+                input(
+                    bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
 
     def reset(self):
         self._reset_robot()
