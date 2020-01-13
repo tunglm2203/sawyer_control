@@ -26,17 +26,25 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  pause_on_reset=True,
                  action_mode='position',
                  z=.06,
-                 goal_low=None,
-                 goal_high=None,
+                 puck_goal_low=None,
+                 puck_goal_high=None,
+                 hand_goal_low=None,
+                 hand_goal_high=None,
                  **kwargs
                  ):
         Serializable.quick_init(self, locals())
         SawyerEnvBase.__init__(self, action_mode=action_mode, **kwargs)
-        if goal_low is None:
-            goal_low = self.config.POSITION_SAFETY_BOX.low[:2]
-        if goal_high is None:
-            goal_high = self.config.POSITION_SAFETY_BOX.high[:2]
-        self.goal_space = Box(np.concatenate((goal_low, goal_low)), np.concatenate((goal_high, goal_high)),
+        if hand_goal_low is None:
+            hand_goal_low = self.config.POSITION_SAFETY_BOX.low[:2]
+        if hand_goal_high is None:
+            hand_goal_high = self.config.POSITION_SAFETY_BOX.high[:2]
+        if puck_goal_low is None:
+            puck_goal_low = hand_goal_low
+        if hand_goal_high is None:
+            puck_goal_high = hand_goal_high
+
+        self.goal_space = Box(np.concatenate((puck_goal_low, hand_goal_low)),
+                              np.concatenate((puck_goal_high, hand_goal_high)),
                               dtype=np.float32)
         self._state_goal = None
         self.pause_on_reset = pause_on_reset
@@ -44,7 +52,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.z = z
 
-        self.use_gazebo_auto = True
+        self.use_gazebo_auto = False
         if self.use_gazebo_auto:
             self.client = ClientProcess()
         self.pos_object_reset_position = self.config.OBJ_RESET_POS
