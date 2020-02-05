@@ -45,7 +45,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.goal_space = Box(np.concatenate((puck_goal_low, hand_goal_low)),
                               np.concatenate((puck_goal_high, hand_goal_high)),
-                              dtype=np.float32)
+                              dtype=np.float64)
         self._state_goal = None
         self.pause_on_reset = pause_on_reset
         self.fixed_goal = np.array(fixed_goal)
