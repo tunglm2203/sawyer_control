@@ -357,10 +357,11 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
         if image is None:
             raise Exception('Unable to get image from image server')
         image = np.array(image).reshape(480, 480, 3)
-        image = image[::-1, :, :]
+        image = image[::-1, :, ::-1]
         image = copy.deepcopy(image)
         image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         image = np.asarray(image).reshape(width, height, 3)
+        image = image.astype(np.uint8)
         return image
 
     def request_observation(self):
