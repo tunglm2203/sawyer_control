@@ -30,6 +30,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  puck_goal_high=None,
                  hand_goal_low=None,
                  hand_goal_high=None,
+                 random_init=False,
                  **kwargs
                  ):
         Serializable.quick_init(self, locals())
@@ -52,6 +53,8 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.z = z
 
+        self.random_init = random_init
+        self.reset_obj_pos_rand = self.config.OBJ_RESET_POS
         self.use_gazebo_auto = False
         if self.use_gazebo_auto:
             self.client = ClientProcess()
@@ -90,6 +93,14 @@ class SawyerPushXYEnv(SawyerEnvBase):
         if self.pause_on_reset:
             if self.use_gazebo_auto:
                 print(bcolors.OKBLUE+'move object to reset position and press enter'+bcolors.ENDC)
+                if self.random_init:
+                    obj_pos_rand = np.random.uniform(
+                        self.goal_space.low,
+                        self.goal_space.high,
+                        size=(1, self.goal_space.low.size),
+                    )
+                    obj_pos = obj_pos_rand[0][:2]
+                    self.pos_object_reset_position[:2] = obj_pos
                 args = dict(x=self.pos_object_reset_position[0],
                             y=self.pos_object_reset_position[1],
                             z=self.pos_object_reset_position[2])
