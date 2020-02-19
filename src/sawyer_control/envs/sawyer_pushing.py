@@ -3,8 +3,10 @@ import numpy as np
 from gym.spaces import Box
 from sawyer_control.envs.sawyer_env_base import SawyerEnvBase
 from sawyer_control.core.serializable import Serializable
-from sawyer_control.envs.client_server_utils import ClientProcess
-import time
+import rospy
+import rospkg
+from gazebo_msgs.msg import ModelState
+from gazebo_msgs.srv import SetModelState
 
 
 class bcolors:
@@ -31,6 +33,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  hand_goal_low=None,
                  hand_goal_high=None,
                  random_init=False,
+                 use_gazebo_auto=False,
                  **kwargs
                  ):
         Serializable.quick_init(self, locals())
@@ -53,12 +56,13 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.z = z
 
+        self.pos_object_reset_position = self.config.OBJ_RESET_POS
+
         self.random_init = random_init
         self.reset_obj_pos_rand = self.config.OBJ_RESET_POS
-        self.use_gazebo_auto = False
-        if self.use_gazebo_auto:
-            self.client = ClientProcess()
-        self.pos_object_reset_position = self.config.OBJ_RESET_POS
+        self.use_gazebo_auto = use_gazebo_auto
+        self.safe_pos_to_move_to_goal = self.config.POSITION_SAFETY_BOX_LOWS
+        self.safe_pos_to_move_to_goal[2] = self.config.POSITION_SAFETY_BOX_HIGHS[2]
 
     @property
     def goal_dim(self):
@@ -67,23 +71,24 @@ class SawyerPushXYEnv(SawyerEnvBase):
     def set_to_goal(self, goal):
         print('moving arm to desired object goal')
         obj_goal = np.concatenate((goal[:2], [self.z]))
-        ee_goal = np.concatenate((goal[2:4], [self.z]))
+        ee_goal = np.concatenate((goal[2:], [self.z]))
         self._position_act(obj_goal - self._get_endeffector_pose()[:3])
         if self.use_gazebo_auto:
             print(bcolors.OKGREEN + 'place object at end effector location and press enter' +
                   bcolors.ENDC)
             # TUNG: +- 0.05 to avoid collision since object right below gripper
-            args = dict(x=goal[0] + 0.05,
-                        y=goal[1] - 0.05,
-                        z=self.pos_object_reset_position[2])
-            msg = dict(func='set_object_los', args=args)
-            self.client.sending(msg, sleep_before=self.config.SLEEP_BEFORE_SENDING_CMD_SOCKET,
-                                sleep_after=self.config.SLEEP_BETWEEN_2_CMDS)
-            self.client.sending(msg, sleep_before=0,
-                                sleep_after=self.config.SLEEP_AFTER_SENDING_CMD_SOCKET)
+            obj_pos = [goal[0] + 0.05, goal[1] - 0.05, self.pos_object_reset_position[2]]
+            obj_name = 'cylinder'
+            self.set_obj_to_pos_in_gazebo(obj_name, obj_pos)
         else:
             input(bcolors.OKGREEN + 'place object at end effector location and press enter' +
                   bcolors.ENDC)
+
+        # This step to move to safe position before moving to goal. It helps to avoid the situation
+        # that EE collide with object when ee's goal pos and object's goal position in same
+        # coordinate.
+        self._position_act(self.safe_pos_to_move_to_goal - self._get_endeffector_pose()[:3])
+
         self._position_act(ee_goal - self._get_endeffector_pose()[:3])
 
     def _reset_robot(self):
@@ -92,23 +97,21 @@ class SawyerPushXYEnv(SawyerEnvBase):
         self.in_reset = False
         if self.pause_on_reset:
             if self.use_gazebo_auto:
-                print(bcolors.OKBLUE+'move object to reset position and press enter'+bcolors.ENDC)
+                print(
+                    bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
                 if self.random_init:
                     obj_pos_rand = np.random.uniform(
                         self.goal_space.low,
                         self.goal_space.high,
                         size=(1, self.goal_space.low.size),
                     )
-                    obj_pos = obj_pos_rand[0][:2]
-                    self.pos_object_reset_position[:2] = obj_pos
-                args = dict(x=self.pos_object_reset_position[0],
-                            y=self.pos_object_reset_position[1],
-                            z=self.pos_object_reset_position[2])
-                msg = dict(func='set_object_los', args=args)
-                self.client.sending(msg, sleep_before=self.config.SLEEP_BEFORE_SENDING_CMD_SOCKET,
-                                    sleep_after=self.config.SLEEP_BETWEEN_2_CMDS)
-                self.client.sending(msg, sleep_before=0,
-                                    sleep_after=self.config.SLEEP_AFTER_SENDING_CMD_SOCKET)
+                    self.pos_object_reset_position[:2] = obj_pos_rand[0][:2]
+
+                obj_pos = [self.pos_object_reset_position[0],
+                           self.pos_object_reset_position[1],
+                           self.pos_object_reset_position[2]]
+                obj_name = 'cylinder'   # Depend on your gazebo environment
+                self.set_obj_to_pos_in_gazebo(obj_name, obj_pos)
             else:
                 input(
                     bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
@@ -123,3 +126,25 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
     def compute_rewards(self, actions, obs, goals):
         raise NotImplementedError('Use Image based reward')
+
+    def set_obj_to_pos_in_gazebo(self, object_name, object_pos):
+        """
+        Reference:
+            http://gazebosim.org/tutorials/?tut=ros_comm
+            http://answers.gazebosim.org/question/22125/how-to-set-a-models-position-using-gazeboset_model_state-service-in-python/
+        """
+        state_msg = ModelState()
+        state_msg.model_name = object_name
+        state_msg.pose.position.x = float(object_pos[0])
+        state_msg.pose.position.y = float(object_pos[1])
+        state_msg.pose.position.z = float(object_pos[2])
+        state_msg.pose.orientation.x = 0.0  # pos[3]
+        state_msg.pose.orientation.y = 1.0  # pos[4]
+        state_msg.pose.orientation.z = 0.0  # pos[5]
+        state_msg.pose.orientation.w = 0.0  # pos[6]
+        rospy.wait_for_service('/gazebo/set_model_state')
+        try:
+            set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+            resp = set_state(state_msg)
+        except rospy.ServiceException as e:
+            print("Service call failed: %s" % e)
