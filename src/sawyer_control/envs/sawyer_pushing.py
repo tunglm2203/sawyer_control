@@ -7,6 +7,7 @@ import rospy
 import rospkg
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
+from gazebo_msgs.srv import GetModelState
 
 
 class bcolors:
@@ -33,6 +34,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  hand_goal_low=None,
                  hand_goal_high=None,
                  random_init=False,
+                 use_gazebo=True,
                  use_gazebo_auto=False,
                  **kwargs
                  ):
@@ -60,6 +62,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.random_init = random_init
         self.reset_obj_pos_rand = self.config.OBJ_RESET_POS
+        self.use_gazebo = use_gazebo
         self.use_gazebo_auto = use_gazebo_auto
         self.safe_pos_to_move_to_goal = self.config.POSITION_SAFETY_BOX_LOWS
         self.safe_pos_to_move_to_goal[2] = self.config.POSITION_SAFETY_BOX_HIGHS[2]
@@ -73,7 +76,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
         obj_goal = np.concatenate((goal[:2], [self.z]))
         ee_goal = np.concatenate((goal[2:], [self.z]))
         self._position_act(obj_goal - self._get_endeffector_pose()[:3])
-        if self.use_gazebo_auto:
+        if self.use_gazebo_auto and self.use_gazebo:
             print(bcolors.OKGREEN + 'place object at end effector location and press enter' +
                   bcolors.ENDC)
             # TUNG: +- 0.05 to avoid collision since object right below gripper
@@ -96,7 +99,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
         self._safe_move_to_neutral()
         self.in_reset = False
         if self.pause_on_reset:
-            if self.use_gazebo_auto:
+            if self.use_gazebo_auto and self.use_gazebo:
                 print(
                     bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
                 if self.random_init:
@@ -127,8 +130,59 @@ class SawyerPushXYEnv(SawyerEnvBase):
     def compute_rewards(self, actions, obs, goals):
         raise NotImplementedError('Use Image based reward')
 
+    def _get_info(self):
+        """
+        This function helps to obtain information in gazebo environment such as object's position,
+        distance from hand to hand's target, object to object's target.
+        Author: Tung
+        :return: The dictionary contains hand's, object's, touch's distance, and success flag
+        """
+        if self.use_gazebo:
+            goal = self.get_goal()['state_desired_goal']
+            puck_goal_pos, hand_goal_pos = goal[:2], goal[2:]
+            hand_distance = np.linalg.norm(
+                hand_goal_pos - self._get_endeffector_pose()[:2]
+            )
+            puck_distance = np.linalg.norm(
+                puck_goal_pos - self.get_obj_pos_in_gazebo(object_name='cylinder')[:2])
+            touch_distance = np.linalg.norm(
+                self._get_endeffector_pose()[:2] -
+                self.get_obj_pos_in_gazebo(object_name='cylinder')[:2])
+            info = dict(
+                hand_distance=hand_distance,
+                puck_distance=puck_distance,
+                touch_distance=touch_distance,
+                success=float(hand_distance + puck_distance < 0.06),
+            )
+        else:
+            info = dict()
+        return info
+
+    def get_obj_pos_in_gazebo(self, object_name):
+        """
+        This function is only used with gazebo to get object's position.
+        Author: Tung
+        Reference:
+            http://gazebosim.org/tutorials/?tut=ros_comm
+            https://answers.ros.org/question/261782/how-to-use-getmodelstate-service-from-gazebo-in-python/
+        """
+        rospy.wait_for_service('/gazebo/get_model_state')
+        try:
+            model_coordinates = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
+            obj_info = model_coordinates(object_name, '')
+            obj_pos = np.array([obj_info.pose.position.x,
+                                obj_info.pose.position.y,
+                                obj_info.pose.position.z])
+            return obj_pos
+
+        except rospy.ServiceException as e:
+            print("Get Model State service call failed: %s" % e)
+            rospy.loginfo("Get Model State service call failed:  {0}".format(e))
+
     def set_obj_to_pos_in_gazebo(self, object_name, object_pos):
         """
+        This function is only used with gazebo to set object's position.
+        Author: Tung
         Reference:
             http://gazebosim.org/tutorials/?tut=ros_comm
             http://answers.gazebosim.org/question/22125/how-to-set-a-models-position-using-gazeboset_model_state-service-in-python/
@@ -147,4 +201,5 @@ class SawyerPushXYEnv(SawyerEnvBase):
             set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             resp = set_state(state_msg)
         except rospy.ServiceException as e:
-            print("Service call failed: %s" % e)
+            print("Set Model State service call failed: %s" % e)
+            rospy.loginfo("Set Model State service call failed:  {0}".format(e))
