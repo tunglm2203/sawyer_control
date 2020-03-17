@@ -422,11 +422,22 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
                 0
             )
         else:
-            goals = np.random.uniform(
-                self.goal_space.low,
-                self.goal_space.high,
-                size=(batch_size, self.goal_space.low.size),
-            )
+            if self.use_gazebo_auto:
+                while True:
+                    goals = np.random.uniform(
+                        self.goal_space.low,
+                        self.goal_space.high,
+                        size=(batch_size, self.goal_space.low.size),
+                    )
+                    dis_obj_vs_ee = np.linalg.norm(goals[:, :2] - goals[:, 2:], axis=1)
+                    if dis_obj_vs_ee.all() > self.config.OBJECT_RADIUS:
+                        break
+            else:
+                goals = np.random.uniform(
+                    self.goal_space.low,
+                    self.goal_space.high,
+                    size=(batch_size, self.goal_space.low.size),
+                )
         return goals
 
     @abc.abstractmethod

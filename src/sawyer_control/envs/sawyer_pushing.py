@@ -40,6 +40,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  ):
         Serializable.quick_init(self, locals())
         SawyerEnvBase.__init__(self, action_mode=action_mode, **kwargs)
+        self.use_gazebo_auto = use_gazebo_auto
         if hand_goal_low is None:
             hand_goal_low = self.config.POSITION_SAFETY_BOX.low[:2]
         if hand_goal_high is None:
@@ -58,13 +59,11 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
         self.z = z
 
-        self.pos_object_reset_position = self.config.OBJ_RESET_POS
+        self.pos_object_reset_position = self.config.OBJ_RESET_POS.copy()
 
         self.random_init = random_init
-        self.reset_obj_pos_rand = self.config.OBJ_RESET_POS
         self.use_gazebo = use_gazebo
-        self.use_gazebo_auto = use_gazebo_auto
-        self.safe_pos_to_move_to_goal = self.config.POSITION_SAFETY_BOX_LOWS
+        self.safe_pos_to_move_to_goal = self.config.POSITION_SAFETY_BOX_LOWS.copy()
         self.safe_pos_to_move_to_goal[2] = self.config.POSITION_SAFETY_BOX_HIGHS[2]
 
     @property
@@ -73,16 +72,18 @@ class SawyerPushXYEnv(SawyerEnvBase):
 
     def set_to_goal(self, goal):
         print('moving arm to desired object goal')
-        obj_goal = np.concatenate((goal[:2], [self.z]))
-        ee_goal = np.concatenate((goal[2:], [self.z]))
-        self._position_act(obj_goal - self._get_endeffector_pose()[:3])
+        ee_reset_high = np.concatenate((self.pos_control_reset_position[:2],
+                                        [self.config.POSITION_SAFETY_BOX_HIGHS[2]]))
+        obj_goal_high = np.concatenate((goal[:2], [self.config.POSITION_SAFETY_BOX_HIGHS[2]]))
+        ee_goal_high = np.concatenate((goal[2:], [self.config.POSITION_SAFETY_BOX_HIGHS[2]]))
+        ee_goal = np.concatenate((goal[2:], [self.config.POSITION_SAFETY_BOX_LOWS[2]]))
+        self._position_act(ee_reset_high - self._get_endeffector_pose()[:3])
+        self._position_act(obj_goal_high - self._get_endeffector_pose()[:3])
         if self.use_gazebo_auto and self.use_gazebo:
             print(bcolors.OKGREEN + 'place object at end effector location and press enter' +
                   bcolors.ENDC)
-            # TUNG: +- 0.05 to avoid collision since object right below gripper
-            obj_pos = [goal[0] + 0.05, goal[1] - 0.05, self.pos_object_reset_position[2]]
-            obj_name = 'cylinder'
-            self.set_obj_to_pos_in_gazebo(obj_name, obj_pos)
+            obj_pos = [goal[0], goal[1], self.pos_object_reset_position[2]]
+            self.set_obj_to_pos_in_gazebo(self.config.OBJECT_NAME, obj_pos)
         else:
             input(bcolors.OKGREEN + 'place object at end effector location and press enter' +
                   bcolors.ENDC)
@@ -90,8 +91,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
         # This step to move to safe position before moving to goal. It helps to avoid the situation
         # that EE collide with object when ee's goal pos and object's goal position in same
         # coordinate.
-        self._position_act(self.safe_pos_to_move_to_goal - self._get_endeffector_pose()[:3])
-
+        self._position_act(ee_goal_high - self._get_endeffector_pose()[:3])
         self._position_act(ee_goal - self._get_endeffector_pose()[:3])
 
     def _reset_robot(self):
@@ -113,8 +113,7 @@ class SawyerPushXYEnv(SawyerEnvBase):
                 obj_pos = [self.pos_object_reset_position[0],
                            self.pos_object_reset_position[1],
                            self.pos_object_reset_position[2]]
-                obj_name = 'cylinder'   # Depend on your gazebo environment
-                self.set_obj_to_pos_in_gazebo(obj_name, obj_pos)
+                self.set_obj_to_pos_in_gazebo(self.config.OBJECT_NAME, obj_pos)
             else:
                 input(
                     bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
@@ -144,10 +143,10 @@ class SawyerPushXYEnv(SawyerEnvBase):
                 hand_goal_pos - self._get_endeffector_pose()[:2]
             )
             puck_distance = np.linalg.norm(
-                puck_goal_pos - self.get_obj_pos_in_gazebo(object_name='cylinder')[:2])
+                puck_goal_pos - self.get_obj_pos_in_gazebo(object_name=self.config.OBJECT_NAME)[:2])
             touch_distance = np.linalg.norm(
                 self._get_endeffector_pose()[:2] -
-                self.get_obj_pos_in_gazebo(object_name='cylinder')[:2])
+                self.get_obj_pos_in_gazebo(object_name=self.config.OBJECT_NAME)[:2])
             info = dict(
                 hand_distance=hand_distance,
                 puck_distance=puck_distance,
