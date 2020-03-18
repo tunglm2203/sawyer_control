@@ -422,7 +422,8 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
                 0
             )
         else:
-            if self.use_gazebo_auto:
+            if self.use_gazebo_auto and self.__class__.__name__ == 'SawyerPushXYEnv':
+                # This `if` code only use for SawyerPushXYEnv env
                 while True:
                     goals = np.random.uniform(
                         self.goal_space.low,
@@ -430,7 +431,7 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
                         size=(batch_size, self.goal_space.low.size),
                     )
                     dis_obj_vs_ee = np.linalg.norm(goals[:, :2] - goals[:, 2:], axis=1)
-                    if dis_obj_vs_ee.all() > self.config.OBJECT_RADIUS:
+                    if (dis_obj_vs_ee > self.config.OBJECT_RADIUS).all():
                         break
             else:
                 goals = np.random.uniform(

@@ -28,7 +28,6 @@ class SawyerPushXYEnv(SawyerEnvBase):
                  fixed_goal=(0.5, 1, 1, 1),
                  pause_on_reset=True,
                  action_mode='position',
-                 z=.06,
                  puck_goal_low=None,
                  puck_goal_high=None,
                  hand_goal_low=None,
@@ -56,8 +55,6 @@ class SawyerPushXYEnv(SawyerEnvBase):
         self._state_goal = None
         self.pause_on_reset = pause_on_reset
         self.fixed_goal = np.array(fixed_goal)
-
-        self.z = z
 
         self.pos_object_reset_position = self.config.OBJ_RESET_POS.copy()
 
