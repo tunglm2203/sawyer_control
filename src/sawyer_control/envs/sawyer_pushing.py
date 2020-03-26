@@ -100,11 +100,16 @@ class SawyerPushXYEnv(SawyerEnvBase):
                 print(
                     bcolors.OKBLUE + 'move object to reset position and press enter' + bcolors.ENDC)
                 if self.random_init:
-                    obj_pos_rand = np.random.uniform(
-                        self.goal_space.low,
-                        self.goal_space.high,
-                        size=(1, self.goal_space.low.size),
-                    )
+                    while True:
+                        obj_pos_rand = np.random.uniform(
+                            self.goal_space.low,
+                            self.goal_space.high,
+                            size=(1, self.goal_space.low.size),
+                        )
+                        dis_obj_vs_ee = np.linalg.norm(self.pos_control_reset_position[:2] -
+                                                       obj_pos_rand[0, :2])
+                        if dis_obj_vs_ee > self.config.OBJECT_RADIUS:
+                            break
                     self.pos_object_reset_position[:2] = obj_pos_rand[0][:2]
 
                 obj_pos = [self.pos_object_reset_position[0],

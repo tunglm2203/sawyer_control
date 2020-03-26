@@ -106,4 +106,4 @@ JOINT_POSITION_TIMEOUT = .5
 
 # OBJECT IN PUSHER ENV
 OBJECT_NAME = 'cylinder'
-OBJECT_RADIUS = 0.05 + 0.03     # +0.03 to avoid collision
+OBJECT_RADIUS = 0.05 + 0.05     # +0.03 to avoid collision
