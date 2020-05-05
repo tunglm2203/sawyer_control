@@ -72,7 +72,11 @@ class SawyerEnvBase(gym.Env, Serializable, MultitaskEnv, metaclass=abc.ABCMeta):
         ee_pos = self._get_endeffector_pose()
         endeffector_pos = ee_pos[:3]
         target_ee_pos = (endeffector_pos + action)
-        target_ee_pos = np.clip(target_ee_pos, self.config.POSITION_SAFETY_BOX_LOWS, self.config.POSITION_SAFETY_BOX_HIGHS)
+        if self.in_reset:
+            target_ee_pos = np.clip(target_ee_pos, self.config.POSITION_SAFETY_BOX_LOWS, self.config.POSITION_SAFETY_BOX_HIGHS)
+        else:
+            target_ee_pos = np.clip(target_ee_pos, self.config.POSITION_SAFETY_BOX_LOWS,
+                                    self.config.POSITION_SAFETY_BOX_HIGHS_ACT)
         target_ee_pos = np.concatenate((target_ee_pos, [self.config.POSITION_CONTROL_EE_ORIENTATION.x, self.config.POSITION_CONTROL_EE_ORIENTATION.y, self.config.POSITION_CONTROL_EE_ORIENTATION.z, self.config.POSITION_CONTROL_EE_ORIENTATION.w]))
         angles = self.request_ik_angles(target_ee_pos, self._get_joint_angles())
         self.send_angle_action(angles, target_ee_pos)
