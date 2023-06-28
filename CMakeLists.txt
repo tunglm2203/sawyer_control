@@ -57,7 +57,7 @@ catkin_python_setup()
 ## Generate services in the 'srv' folder
  add_service_files(
    FILES
-   getRobotPoseAndJacobian.srv
+   robot_pose_and_jacobian.srv
    observation.srv
    ik.srv
    get_kinectdata.srv
