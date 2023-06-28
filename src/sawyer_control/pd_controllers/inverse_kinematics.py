@@ -42,7 +42,7 @@ def get_joint_angles(pose, seed_cmd = None, use_advanced_options = False, curren
     try:
         rospy.wait_for_service(name_of_service, 5.0)
         resp = iksvc(ikreq)
-    except (rospy.ServiceException, rospy.ROSException), e:
+    except (rospy.ServiceException, rospy.ROSException) as e:
         rospy.logerr("Service call failed: %s" % (e,))
         return False
 
