@@ -1,6 +1,9 @@
 #!/usr/bin/env python
-from sawyer_control.srv import image, imageResponse
 import rospy
+
+from sawyer_control.srv import image, imageResponse
+from sawyer_control import PREFIX
+
 from sensor_msgs.msg import Image as Image_msg
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -139,23 +142,28 @@ class KinectSimRecorder(object):
         return cv_image
 
 
-def get_observation(unused):
+def handle_get_image_observation(request):
     img = cam.ltob.img_cv2
     img = np.array(img)
     image = img.flatten().tolist()
     return imageResponse(image)
 
 
-def image_server():
-    s = rospy.Service('images', image, get_observation)
-    rospy.spin()
+def image_observation_server():
+    node_name = PREFIX + 'image_observation_server'
+    server_name = PREFIX + 'image_observation'
+    rospy.init_node(node_name, anonymous=True)
 
-
-if __name__ == "__main__":
-    rospy.init_node('image_server', anonymous=True)
+    global cam
     # You should choose the corresponding camera
     # cam = KinectRecorder()
     # cam = RealSenseRecorder()
     # cam = LogitechRecorder()
     cam = KinectSimRecorder()
-    image_server()
+
+    server = rospy.Service(server_name, image, handle_get_image_observation)
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    image_observation_server()
