@@ -11,25 +11,22 @@ import numpy as np
 This file is used for test robot_pose_jacobian_server, it is not called in launch file.
 """
 
-link_names = [
-    '_l2', '_l3', '_l4', '_l5', '_l6', '_hand'
-]
+link_names = ['right_l2', 'right_l3', 'right_l4', 'right_l5', 'right_l6', 'right_hand']
 
 def unpack_pose_jacobian_dict(poses, jacobians):
     pose_jacobian_dict = {}
-    idx_joint = pose_counter = jac_counter = 0
-    for i in range(len(link_names)):
-        pose = poses[pose_counter:pose_counter+3]
+    pose_counter = jac_counter = 0
+    for link in link_names:
+        pose = poses[pose_counter:pose_counter + 3]
         jacobian = np.array([
             jacobians[jac_counter + 3:jac_counter + 10],
             jacobians[jac_counter + 10:jac_counter + 17],
-            jacobians[jac_counter + 17:jac_counter+ 24],
+            jacobians[jac_counter + 17:jac_counter + 24],
         ])
         pose_counter += 3
         jac_counter += 21
 
-        pose_jacobian_dict['right' + link_names[idx_joint]] = [pose, jacobian]
-        idx_joint += 1
+        pose_jacobian_dict[link] = [pose, jacobian]
     return pose_jacobian_dict
 
 
