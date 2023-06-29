@@ -15,7 +15,7 @@ link_names = [
     '_l2', '_l3', '_l4', '_l5', '_l6', '_hand'
 ]
 
-def extract_pose_jacobian(poses, jacobians):
+def unpack_pose_jacobian_dict(poses, jacobians):
     pose_jacobian_dict = {}
     idx_joint = pose_counter = jac_counter = 0
     for i in range(len(link_names)):
@@ -39,7 +39,7 @@ def request_robot_pose_jacobian_server(name):
     try:
         request = rospy.ServiceProxy(server_name, robot_pose_and_jacobian, persistent=True)
         response = request(name)
-        return extract_pose_jacobian(response.poses, response.jacobians)
+        return unpack_pose_jacobian_dict(response.poses, response.jacobians)
     except rospy.ServiceException as e:
         print(e)
 
