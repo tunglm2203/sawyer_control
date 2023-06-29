@@ -11,14 +11,14 @@ import numpy as np
 This file is used for test robot_pose_jacobian_server, it is not called in launch file.
 """
 
-joint_names = [
+link_names = [
     '_l2', '_l3', '_l4', '_l5', '_l6', '_hand'
 ]
 
 def extract_pose_jacobian(poses, jacobians):
     pose_jacobian_dict = {}
     idx_joint = pose_counter = jac_counter = 0
-    for i in range(len(joint_names)):
+    for i in range(len(link_names)):
         pose = poses[pose_counter:pose_counter+3]
         jacobian = np.array([
             jacobians[jac_counter + 3:jac_counter + 10],
@@ -28,7 +28,7 @@ def extract_pose_jacobian(poses, jacobians):
         pose_counter += 3
         jac_counter += 21
 
-        pose_jacobian_dict['right' + joint_names[idx_joint]] = [pose, jacobian]
+        pose_jacobian_dict['right' + link_names[idx_joint]] = [pose, jacobian]
         idx_joint += 1
     return pose_jacobian_dict
 

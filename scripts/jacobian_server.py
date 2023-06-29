@@ -10,7 +10,7 @@ import intera_interface as ii
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_kinematics import KDLKinematics
 
-joint_names = [
+link_names = [
     '_l2', '_l3', '_l4', '_l5', '_l6', '_hand'
 ]
 
@@ -25,7 +25,7 @@ def handle_get_robot_pose_jacobian(request):
         angles_dict[request.name + '_j3'], angles_dict[request.name + '_j4'], angles_dict[request.name + '_j5'],
         angles_dict[request.name + '_j6']
     ]
-    for joint in joint_names:
+    for joint in link_names:
         # Compute pose for each joint
         joint = request.name + joint
         pose = kin.forward(angles, joint)
