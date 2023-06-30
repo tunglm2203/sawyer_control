@@ -19,15 +19,17 @@ def request_observation_server():
             np.array(response.angles),
             np.array(response.velocities),
             np.array(response.torques),
-            np.array(response.endpoint_pose)
+            np.array(response.endpoint_pose),
+            np.array(response.endpoint_vel),
         )
     except rospy.ServiceException as e:
         print(e)
 
 
 if __name__ == "__main__":
-    angle, vel, torque, ee = request_observation_server()
-    print("Joint angle: ", angle)
-    print("Joint velocity: ", vel)
-    print("Joint torque: ", torque)
-    print("Joint EE: ", ee)
+    angle, vel, torque, ee_pose, ee_vel = request_observation_server()
+    print("Joint angle (dim={}): {}".format(angle.shape, angle))
+    print("Joint velocity (dim={}): {}".format(vel.shape, vel))
+    print("Joint torque (dim={}): {}".format(torque.shape, torque))
+    print("EE pose (dim={}): {}".format(ee_pose.shape, ee_pose))
+    print("EE vel (dim={}): {}".format(ee_vel.shape, ee_vel))

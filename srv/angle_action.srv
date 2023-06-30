@@ -1,4 +1,6 @@
+# request
 float32[] angles
 float32 duration
 ---
+# response
 bool data
