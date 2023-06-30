@@ -19,7 +19,7 @@ def request_observation_server():
             np.array(response.angles),
             np.array(response.velocities),
             np.array(response.torques),
-            np.array(response.endpoint_pose),
+            np.array(response.endpoint_geom),
             np.array(response.endpoint_vel),
         )
     except rospy.ServiceException as e:
