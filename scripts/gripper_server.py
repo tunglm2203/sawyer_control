@@ -14,24 +14,24 @@ Reference: https://support.rethinkrobotics.com/support/solutions/articles/800009
 
 def handle_get_gripper_info(request):
     # Get current position value in meters (m)
-    gripper_position = gripper.get_position()
+    gripper_position = sawyer_gripper.get_position()
 
     # Get the velocity of gripper in meters per second (m/s)
-    gripper_velocity = gripper.get_cmd_velocity()
+    gripper_velocity = sawyer_gripper.get_cmd_velocity()
 
     # Get the force sensed by the gripper in estimated Newtons (Current force value in Newton-Meters (N-m))
-    gripper_force = gripper.get_force()
+    gripper_force = sawyer_gripper.get_force()
 
     return gripperResponse(gripper_position, gripper_velocity, gripper_force)
 
 
 def gripper_server():
     node_name = PREFIX + 'gripper_server'
-    server_name = PREFIX + 'gripper'
+    server_name = PREFIX + 'gripper_info'
     rospy.init_node(node_name, anonymous=True)
 
-    global gripper
-    gripper = ii.Gripper('right_gripper')
+    global sawyer_gripper
+    sawyer_gripper = ii.Gripper('right_gripper')
 
     server = rospy.Service(server_name, gripper, handle_get_gripper_info)
     rospy.spin()
