@@ -27,7 +27,7 @@ def handle_get_gripper_info(request):
 
 def gripper_server():
     node_name = PREFIX + 'gripper_server'
-    server_name = PREFIX + 'gripper_info'
+    server_name = PREFIX + 'gripper'
     rospy.init_node(node_name, anonymous=True)
 
     global sawyer_gripper
