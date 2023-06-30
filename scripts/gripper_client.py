@@ -22,4 +22,7 @@ def request_gripper_server():
 
 
 if __name__ == "__main__":
-    request_gripper_server()
+    pos, vel, force = request_gripper_server()
+    print("pos: ", pos)
+    print("vel: ", vel)
+    print("force: ", force)
