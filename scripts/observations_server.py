@@ -28,8 +28,8 @@ def handle_get_observation(request):
     endeffector_pose_dict = arm.endpoint_pose()     # Cartesian endpoint pose {position, orientation}.
     pos = endeffector_pose_dict['position']             # 'position': Cartesian  (x, y, z)
     orientation = endeffector_pose_dict['orientation']  # 'orientation': Quaternion (x, y, z, w)
-    endpoint_pose = [pos.x, pos.y, pos.z,
-                     orientation.x, orientation.y, orientation.z, orientation.w]
+    endpoint_geometry = [pos.x, pos.y, pos.z,
+                         orientation.x, orientation.y, orientation.z, orientation.w]
 
     # Get end effector velocity
     endeffector_vel_dict = arm.endpoint_velocity()  # Return Cartesian endpoint twist {linear, angular}
@@ -37,7 +37,7 @@ def handle_get_observation(request):
     angular = endeffector_vel_dict['angular']       # Angular velocity around x,y,z axes
     endpoint_vel = [linear.x, linear.y, linear.z, angular.x, angular.y, angular.z]
 
-    return observationResponse(angles, velocities, torques, endpoint_pose, endpoint_vel)
+    return observationResponse(angles, velocities, torques, endpoint_geometry, endpoint_vel)
 
 
 def observation_server():
