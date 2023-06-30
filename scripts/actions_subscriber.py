@@ -17,7 +17,7 @@ def execute_action(action_msg):
 
 def listener():
     node_name = PREFIX + 'actions_subscriber'
-    sub_name = PREFIX + 'actions_publisher'
+    sub_name = PREFIX + 'actions_publisher'     # Name of publisher to subscribe
     rospy.init_node(node_name, anonymous=True)
     rospy.Subscriber(sub_name, actions, execute_action)
 
