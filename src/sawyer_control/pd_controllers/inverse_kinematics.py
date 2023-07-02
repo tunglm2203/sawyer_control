@@ -72,17 +72,18 @@ def get_point_stamped(x,y,z):
     )
     return point
 
-def get_pose_stamped(x,y,z,o):
+
+def get_pose_stamped(p_x, p_y, p_z, o_x, o_y, o_z, o_w):
     hdr = Header(stamp=rospy.Time.now(), frame_id='base')
     p = PoseStamped(
         header=hdr,
         pose=Pose(
             position=Point(
-                x=x,
-                y=y,
-                z=z,
+                x=p_x, y=p_y, z=p_z,
             ),
-            orientation=o
+            orientation=Quaternion(
+                x=o_x, y=o_y, z=o_z, w=o_w
+            )
         )
     )
     return p
@@ -96,7 +97,8 @@ def joint_state_from_cmd(cmd):
 
 def main():
     rospy.init_node("inverse_kinematics_test")
-    pose = get_pose_stamped(0.45, 0.16, 0.21, EXAMPLE_O)
+    pose = get_pose_stamped(p_x=0.45, p_y=0.16, p_z=0.21,
+                            o_x=-0.00142460053167, o_y=0.99999999999, o_z=-0.00177030764765, o_w=0.00253311793936)
     print(get_joint_angles(pose))
 
 if __name__ == '__main__':
