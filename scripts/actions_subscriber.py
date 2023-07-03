@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.msg import actions
+from sawyer_control.msg import msg_arm_actions
 from sawyer_control import PREFIX
 
 import intera_interface as ii
@@ -16,8 +16,8 @@ def execute_action(action_msg):
 
 
 def listener():
-    node_name = PREFIX + 'actions_subscriber'
-    sub_name = PREFIX + 'actions_publisher'     # Name of publisher to subscribe
+    node_name = PREFIX + 'arm_actions_subscriber'
+    sub_name = PREFIX + 'arm_actions_pub'     # Name of publisher to subscribe
     rospy.init_node(node_name, anonymous=True)
     rospy.Subscriber(sub_name, actions, execute_action)
 

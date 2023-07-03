@@ -51,7 +51,8 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   actions.msg
+   msg_arm_actions.msg
+   msg_gripper_action.msg
  )
 
 ## Generate services in the 'srv' folder

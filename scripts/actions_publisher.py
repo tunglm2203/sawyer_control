@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.msg import actions
+from sawyer_control.msg import msg_arm_actions
 from sawyer_control import PREFIX
 
 
 def actions_publisher():
-    node_name = PREFIX + 'actions'
-    pub_name = PREFIX + 'actions_publisher'
+    node_name = PREFIX + 'arm_actions_publisher'
+    pub_name = PREFIX + 'arm_actions_pub'
     rospy.init_node(node_name, anonymous=True)
 
     global action_pub
