@@ -19,7 +19,7 @@ def listener():
     node_name = PREFIX + 'arm_actions_subscriber'
     sub_name = PREFIX + 'arm_actions_pub'     # Name of publisher to subscribe
     rospy.init_node(node_name, anonymous=True)
-    rospy.Subscriber(sub_name, actions, execute_action)
+    rospy.Subscriber(sub_name, msg_arm_actions, execute_action)
 
     global arm
     global rs

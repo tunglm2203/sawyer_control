@@ -11,7 +11,7 @@ def actions_publisher():
     rospy.init_node(node_name, anonymous=True)
 
     global action_pub
-    action_pub = rospy.Publisher(pub_name, actions, queue_size=10)
+    action_pub = rospy.Publisher(pub_name, msg_arm_actions, queue_size=10)
 
 
 def send_action(action):
