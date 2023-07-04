@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.srv import observation
+from sawyer_control.srv import type_observation
 from sawyer_control import PREFIX
 
 import numpy as np
@@ -13,14 +13,14 @@ def request_observation_server():
     server_name = PREFIX + 'observation'
     rospy.wait_for_service(server_name)
     try:
-        request = rospy.ServiceProxy(server_name, observation, persistent=True)
+        request = rospy.ServiceProxy(server_name, type_observation, persistent=True)
         response = request()  # Structure of message in srv/observation.srv
         return (
-            np.array(response.angles),
-            np.array(response.velocities),
-            np.array(response.torques),
-            np.array(response.endpoint_geom),
-            np.array(response.endpoint_vel),
+            np.array(response.joint_angles),
+            np.array(response.joint_velocities),
+            np.array(response.joint_torques),
+            np.array(response.endpoint_geometry),
+            np.array(response.endpoint_velocity),
         )
     except rospy.ServiceException as e:
         print(e)
