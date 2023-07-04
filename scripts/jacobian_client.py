@@ -5,6 +5,7 @@ import rospy
 from sawyer_control.srv import type_arm_pose_and_jacobian
 from sawyer_control import PREFIX
 
+from collections import OrderedDict
 import numpy as np
 
 """
@@ -14,7 +15,7 @@ This file is used for test robot_pose_jacobian_server, it is not called in launc
 link_names = ['right_l2', 'right_l3', 'right_l4', 'right_l5', 'right_l6', 'right_hand']
 
 def unpack_pose_jacobian_dict(poses, jacobians):
-    pose_jacobian_dict = {}
+    pose_jacobian_dict = OrderedDict()
     pose_counter = jac_counter = 0
     for link in link_names:
         pose = poses[pose_counter:pose_counter + 3]
