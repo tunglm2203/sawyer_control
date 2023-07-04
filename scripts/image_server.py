@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.srv import image, imageResponse
+from sawyer_control.srv import type_image, type_imageResponse
 from sawyer_control import PREFIX
 
 from sensor_msgs.msg import Image as Image_msg
@@ -146,7 +146,7 @@ def handle_get_image_observation(request):
     img = cam.ltob.img_cv2
     img = np.array(img)
     image = img.flatten().tolist()
-    return imageResponse(image)
+    return type_imageResponse(image)
 
 
 def image_observation_server():
@@ -161,7 +161,7 @@ def image_observation_server():
     # cam = LogitechRecorder()
     cam = KinectSimRecorder()
 
-    server = rospy.Service(server_name, image, handle_get_image_observation)
+    server = rospy.Service(server_name, type_image, handle_get_image_observation)
     rospy.spin()
 
 

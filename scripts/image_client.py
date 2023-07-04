@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.srv import image
+from sawyer_control.srv import type_image
 from sawyer_control import PREFIX
 
 import cv2
@@ -15,7 +15,7 @@ def request_image_observation():
     server_name = PREFIX + 'image_observation'
     rospy.wait_for_service(server_name)
     try:
-        request = rospy.ServiceProxy(server_name, image, persistent=True)
+        request = rospy.ServiceProxy(server_name, type_image, persistent=True)
         response = request()
         return response.image
     except rospy.ServiceException as e:
