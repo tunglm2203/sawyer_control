@@ -18,17 +18,17 @@ def request_joint_angles(tip_name, ee_pos, joint_angles):
         request = rospy.ServiceProxy(server_name, type_ik, persistent=True)
         response = request(tip_name, ee_pos, joint_angles)
 
-        return response.joint_angles
+        return response.target_joint_angles
     except rospy.ServiceException as e:
         print(e)
 
 
 if __name__ == "__main__":
-    ee_pose = [0.4321299165321603, 0.15649043202597238, 0.9493153890114487,
-               0.5502556280737215, 0.7773376056237875, 0.1563899406807335, 0.26173875737106267]
+    ee_pose = [0.603529721243, 0.00140361630124, 0.199834650308,
+               -0.00141560520355, 0.999987273934, 0.00140890396491, -0.00463282001645]
     seed_joint_angles = {
-        'right_j6': 2.827447265625, 'right_j5': 1.8943388671875, 'right_j4': 0.425419921875,
-        'right_j3': 0.331033203125, 'right_j2': -0.6551962890625, 'right_j1': -1.241234375, 'right_j0': 0.140044921875
+        'right_j6': 1.0, 'right_j5': 1.0, 'right_j4': 0.6,
+        'right_j3': 1.5, 'right_j2': -0.7, 'right_j1': -0.76, 'right_j0': 0.2
     }
     tip_name = 'right_gripper_tip'
     seed_joint_angles = [seed_joint_angles[joint] for joint in joint_names]

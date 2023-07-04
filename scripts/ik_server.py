@@ -5,14 +5,16 @@ import intera_interface
 
 from sawyer_control.srv import type_ik, type_ikResponse
 from sawyer_control import PREFIX
-from sawyer_control.pd_controllers.inverse_kinematics import get_pose_stamped, get_joint_angles
+from sawyer_control.pd_controllers.inverse_kinematics import get_pose_stamped, get_joint_angles, joint_state_from_cmd
 from sawyer_control.configs import ros_config
 
 
 
 def handle_compute_joint_angle(request):
-    # Get name of joints
+    # Get name of joints: expect ['right_j0', 'right_j1', 'right_j2', 'right_j3', 'right_j4', 'right_j5', 'right_j6']
     joint_names = arm.joint_names()
+
+    tip_name = request.tip_name
 
     ee_pos_x, ee_pos_y, ee_pos_z = request.geometry[0], request.geometry[1], request.geometry[2]
     ee_ori_x, ee_ori_y, ee_ori_z, ee_ori_w = request.geometry[3], request.geometry[4], request.geometry[5], request.geometry[6]
@@ -21,10 +23,9 @@ def handle_compute_joint_angle(request):
 
     seed_angles = request.current_joint_angles
     seed_angles = dict(zip(joint_names, seed_angles))
+    seed_cmd = joint_state_from_cmd(seed_angles)
 
-    tip_name = request.tip_name
-
-    ik_angles = get_joint_angles(pose, seed_angles, True, False, tip_name)
+    ik_angles = get_joint_angles(pose, seed_cmd, True, False, tip_name)
     ik_angles = [ik_angles[joint] for joint in joint_names]
     return type_ikResponse(ik_angles)
 

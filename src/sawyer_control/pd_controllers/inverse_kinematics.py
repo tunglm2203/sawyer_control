@@ -43,8 +43,7 @@ def get_joint_angles(pose, seed_cmd=None, use_advanced_options=False, current=Tr
             ikreq.seed_mode = ikreq.SEED_CURRENT
         else:
             ikreq.seed_mode = ikreq.SEED_AUTO
-        seed = joint_state_from_cmd(seed_cmd)
-        ikreq.seed_angles.append(seed)
+        ikreq.seed_angles.append(seed_cmd)
 
     try:
         rospy.wait_for_service(server_name, 5.0)
@@ -56,7 +55,6 @@ def get_joint_angles(pose, seed_cmd=None, use_advanced_options=False, current=Tr
     # Check if result valid, and type of seed ultimately used to get solution
     if (resp.result_type[0] > 0):
         limb_joints = dict(zip(resp.joints[0].name, resp.joints[0].position))
-
         return limb_joints
     else:
         rospy.loginfo("INVALID POSE - No Valid Joint Solution Found.")
@@ -75,7 +73,7 @@ def get_pose_stamped(p_x, p_y, p_z, o_x, o_y, o_z, o_w):
     pose = PoseStamped(
         header=Header(stamp=rospy.Time.now(), frame_id='base'),
         pose=Pose(
-            position=Point(x=p_x, y=p_y, z=p_z, ),
+            position=Point(x=p_x, y=p_y, z=p_z),
             orientation=Quaternion(x=o_x, y=o_y, z=o_z, w=o_w)
         )
     )
@@ -94,7 +92,12 @@ def main():
         p_x=0.45, p_y=0.16, p_z=0.21,
         o_x=-0.00142460053167, o_y=0.99999999999, o_z=-0.00177030764765, o_w=0.00253311793936
     )
-    print(get_joint_angles(pose))
+    seed_joint_angles = {
+        'right_j6': 1.0, 'right_j5': 1.0, 'right_j4': 0.6,
+        'right_j3': 1.5, 'right_j2': -0.7, 'right_j1': -0.76, 'right_j0': 0.2
+    }
+    target_joint_angles = get_joint_angles(pose, seed_joint_angles, True, False, 'right_gripper_tip')
+    print(target_joint_angles)
 
 if __name__ == '__main__':
     main()
