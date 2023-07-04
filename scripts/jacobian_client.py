@@ -2,7 +2,7 @@
 
 import rospy
 
-from sawyer_control.srv import robot_pose_and_jacobian
+from sawyer_control.srv import type_arm_pose_and_jacobian
 from sawyer_control import PREFIX
 
 import numpy as np
@@ -31,10 +31,10 @@ def unpack_pose_jacobian_dict(poses, jacobians):
 
 
 def request_robot_pose_jacobian_server(name):
-    server_name = PREFIX + 'robot_pose_jacobian'
+    server_name = PREFIX + 'arm_pose_jacobian'
     rospy.wait_for_service(server_name)
     try:
-        request = rospy.ServiceProxy(server_name, robot_pose_and_jacobian, persistent=True)
+        request = rospy.ServiceProxy(server_name, type_arm_pose_and_jacobian, persistent=True)
         response = request(name)
         return unpack_pose_jacobian_dict(response.poses, response.jacobians)
     except rospy.ServiceException as e:
