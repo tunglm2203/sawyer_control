@@ -1,8 +1,8 @@
 # request
 ---
 # response
-float32[] joint_angles
-float32[] joint_velocities
-float32[] joint_torques
-float32[] endpoint_geometry
-float32[] endpoint_velocity
+float64[] joint_angles
+float64[] joint_velocities
+float64[] joint_torques
+float64[] endpoint_geometry
+float64[] endpoint_velocity

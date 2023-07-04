@@ -1,8 +1,8 @@
 # request
 string tip_name
-float32[] geometry
-float32[] current_joint_angles
+float64[] geometry
+float64[] current_joint_angles
 
 ---
 # response
-float32[] target_joint_angles
+float64[] target_joint_angles
