@@ -60,7 +60,7 @@ catkin_python_setup()
    FILES
    type_arm_pose_and_jacobian.srv
    type_observation.srv
-   ik.srv
+   type_ik.srv
    get_kinectdata.srv
    type_image.srv
    angle_action.srv

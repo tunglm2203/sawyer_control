@@ -1,38 +1,43 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.srv import ik, ikResponse
+import intera_interface
+
+from sawyer_control.srv import type_ik, type_ikResponse
 from sawyer_control import PREFIX
 from sawyer_control.pd_controllers.inverse_kinematics import get_pose_stamped, get_joint_angles
 from sawyer_control.configs import ros_config
 
-import intera_interface as ii
 
 
 def handle_compute_joint_angle(request):
     # Get name of joints
     joint_names = arm.joint_names()
 
-    ee_pos_x, ee_pos_y, ee_pos_z = request.ee_pos[0], request.ee_pos[1], request.ee_pos[2]
-    ee_ori_x, ee_ori_y, ee_ori_z, ee_ori_w = request.ee_pos[3], request.ee_pos[4], request.ee_pos[5], request.ee_pos[6]
+    ee_pos_x, ee_pos_y, ee_pos_z = request.geometry[0], request.geometry[1], request.geometry[2]
+    ee_ori_x, ee_ori_y, ee_ori_z, ee_ori_w = request.geometry[3], request.geometry[4], request.geometry[5], request.geometry[6]
+
     pose = get_pose_stamped(ee_pos_x, ee_pos_y, ee_pos_z, ee_ori_x, ee_ori_y, ee_ori_z, ee_ori_w)
 
-    reset_angles = ros_config.RESET_ANGLES
-    reset_angles = dict(zip(joint_names, reset_angles))
-    ik_angles = get_joint_angles(pose, reset_angles, True, False)
+    seed_angles = request.current_joint_angles
+    seed_angles = dict(zip(joint_names, seed_angles))
+
+    tip_name = request.tip_name
+
+    ik_angles = get_joint_angles(pose, seed_angles, True, False, tip_name)
     ik_angles = [ik_angles[joint] for joint in joint_names]
-    return ikResponse(ik_angles)
+    return type_ikResponse(ik_angles)
 
 
 def inverse_kinematics_server():
     node_name = PREFIX + 'ik_server'
     server_name = PREFIX + 'ik'
-    rospy.init_node(node_name, anonymous=True)
+    rospy.init_node(node_name)
 
     global arm
-    arm = ii.Limb('right')
+    arm = intera_interface.Limb('right')
 
-    server = rospy.Service(server_name, ik, handle_compute_joint_angle)
+    server = rospy.Service(server_name, type_ik, handle_compute_joint_angle)
     rospy.spin()
 
 
