@@ -59,7 +59,7 @@ catkin_python_setup()
  add_service_files(
    FILES
    robot_pose_and_jacobian.srv
-   observation.srv
+   type_observation.srv
    ik.srv
    get_kinectdata.srv
    image.srv
