@@ -63,7 +63,7 @@ catkin_python_setup()
    type_ik.srv
    get_kinectdata.srv
    type_image.srv
-   angle_action.srv
+   type_angle_action.srv
    type_gripper.srv
  )
 

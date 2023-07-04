@@ -2,7 +2,7 @@
 import rospy
 
 from sawyer_control.pd_controllers.impedance_controller import ImpedanceController
-from sawyer_control.srv import angle_action, angle_actionResponse
+from sawyer_control.srv import type_angle_action, type_angle_actionResponse
 from sawyer_control import PREFIX
 
 import intera_interface as ii
@@ -19,13 +19,13 @@ def handle_execute_action(request):
 
     joint_angles = [joint_to_values[name] for name in arm.joint_names()]
     controller.move_with_impedance([joint_angles], duration=duration)
-    return angle_actionResponse(True)
+    return type_angle_actionResponse(True)
 
 
 def angle_action_server():
     node_name = PREFIX + 'angle_action_server'
     server_name = PREFIX + 'angle_action'
-    rospy.init_node(node_name, anonymous=True)
+    rospy.init_node(node_name)
 
     global arm
     global controller
@@ -34,7 +34,7 @@ def angle_action_server():
 
     controller = ImpedanceController(control_rate=1000)
 
-    server = rospy.Service(server_name, angle_action, handle_execute_action)
+    server = rospy.Service(server_name, type_angle_action, handle_execute_action)
     rospy.spin()
 
 
