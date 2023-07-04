@@ -20,16 +20,24 @@ from intera_core_msgs.srv import (
     SolvePositionIKRequest,
 )
 
-def get_joint_angles(pose, seed_cmd = None, use_advanced_options = False, current=True):
+
+"""
+Reference:
+[1] https://support.rethinkrobotics.com/support/solutions/articles/80000980360
+[2] https://github.com/tunglm2203/intera_sdk/blob/b74da757e6b798df12e0d19d1fe05d8c19983f35/intera_interface/src/intera_interface/limb.py#L580
+"""
+
+def get_joint_angles(pose, seed_cmd=None, use_advanced_options=False, current=True, tip_name='right_gripper_tip'):
+    assert tip_name in ['right_hand', 'right_gripper_tip', 'right_hand_camera']
     limb = "right"
-    name_of_service = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
-    iksvc = rospy.ServiceProxy(name_of_service, SolvePositionIK)
+    server_name = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
+
+    iksvc = rospy.ServiceProxy(server_name, SolvePositionIK)
     ikreq = SolvePositionIKRequest()
 
     ikreq.pose_stamp.append(pose)
-    ikreq.tip_names.append('right_hand')
+    ikreq.tip_names.append(tip_name)
 
-    seed_joints = None
     if use_advanced_options:
         if current:
             ikreq.seed_mode = ikreq.SEED_CURRENT
@@ -38,9 +46,8 @@ def get_joint_angles(pose, seed_cmd = None, use_advanced_options = False, curren
         seed = joint_state_from_cmd(seed_cmd)
         ikreq.seed_angles.append(seed)
 
-
     try:
-        rospy.wait_for_service(name_of_service, 5.0)
+        rospy.wait_for_service(server_name, 5.0)
         resp = iksvc(ikreq)
     except (rospy.ServiceException, rospy.ROSException) as e:
         rospy.logerr("Service call failed: %s" % (e,))
@@ -48,11 +55,6 @@ def get_joint_angles(pose, seed_cmd = None, use_advanced_options = False, curren
 
     # Check if result valid, and type of seed ultimately used to get solution
     if (resp.result_type[0] > 0):
-        seed_str = {
-                    ikreq.SEED_USER: 'User Provided Seed',
-                    ikreq.SEED_CURRENT: 'Current Joint Angles',
-                    ikreq.SEED_NS_MAP: 'Nullspace Setpoints',
-                   }.get(resp.result_type[0], 'None')
         limb_joints = dict(zip(resp.joints[0].name, resp.joints[0].position))
 
         return limb_joints
@@ -60,33 +62,24 @@ def get_joint_angles(pose, seed_cmd = None, use_advanced_options = False, curren
         rospy.loginfo("INVALID POSE - No Valid Joint Solution Found.")
         raise ValueError
 
-def get_point_stamped(x,y,z):
-    hdr = Header(stamp=rospy.Time.now(), frame_id='base')
+
+def get_point_stamped(x, y, z):
     point = PointStamped(
-        header=hdr,
-        point=Point(
-            x=x,
-            y=y,
-            z=z,
-        )
+        header=Header(stamp=rospy.Time.now(), frame_id='base'),
+        point=Point(x=x, y=y, z=z)
     )
     return point
 
 
 def get_pose_stamped(p_x, p_y, p_z, o_x, o_y, o_z, o_w):
-    hdr = Header(stamp=rospy.Time.now(), frame_id='base')
-    p = PoseStamped(
-        header=hdr,
+    pose = PoseStamped(
+        header=Header(stamp=rospy.Time.now(), frame_id='base'),
         pose=Pose(
-            position=Point(
-                x=p_x, y=p_y, z=p_z,
-            ),
-            orientation=Quaternion(
-                x=o_x, y=o_y, z=o_z, w=o_w
-            )
+            position=Point(x=p_x, y=p_y, z=p_z, ),
+            orientation=Quaternion(x=o_x, y=o_y, z=o_z, w=o_w)
         )
     )
-    return p
+    return pose
 
 def joint_state_from_cmd(cmd):
     js = JointState()
@@ -97,8 +90,10 @@ def joint_state_from_cmd(cmd):
 
 def main():
     rospy.init_node("inverse_kinematics_test")
-    pose = get_pose_stamped(p_x=0.45, p_y=0.16, p_z=0.21,
-                            o_x=-0.00142460053167, o_y=0.99999999999, o_z=-0.00177030764765, o_w=0.00253311793936)
+    pose = get_pose_stamped(
+        p_x=0.45, p_y=0.16, p_z=0.21,
+        o_x=-0.00142460053167, o_y=0.99999999999, o_z=-0.00177030764765, o_w=0.00253311793936
+    )
     print(get_joint_angles(pose))
 
 if __name__ == '__main__':
