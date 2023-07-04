@@ -152,7 +152,7 @@ def handle_get_image_observation(request):
 def image_observation_server():
     node_name = PREFIX + 'image_observation_server'
     server_name = PREFIX + 'image_observation'
-    rospy.init_node(node_name, anonymous=True)
+    rospy.init_node(node_name)
 
     global cam
     # You should choose the corresponding camera

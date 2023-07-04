@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.srv import gripper
+from sawyer_control.srv import type_gripper
 from sawyer_control import PREFIX
 
 
@@ -14,7 +14,7 @@ def request_gripper_server():
     server_name = PREFIX + 'gripper'
     rospy.wait_for_service(server_name)
     try:
-        request = rospy.ServiceProxy(server_name, gripper, persistent=True)
+        request = rospy.ServiceProxy(server_name, type_gripper, persistent=True)
         response = request()
         return (response.position, response.velocity, response.force)
     except rospy.ServiceException as e:

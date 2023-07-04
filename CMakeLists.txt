@@ -64,7 +64,7 @@ catkin_python_setup()
    get_kinectdata.srv
    type_image.srv
    angle_action.srv
-   gripper.srv
+   type_gripper.srv
  )
 
 ## Generate actions in the 'action' folder
