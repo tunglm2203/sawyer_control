@@ -30,16 +30,16 @@ def unpack_pose_jacobian_dict(poses, jacobians):
     return pose_jacobian_dict
 
 
-def request_robot_pose_jacobian_server(name):
+def request_robot_pose_jacobian_server():
     server_name = PREFIX + 'arm_pose_jacobian'
     rospy.wait_for_service(server_name)
     try:
         request = rospy.ServiceProxy(server_name, type_arm_pose_and_jacobian, persistent=True)
-        response = request(name)
+        response = request()
         return unpack_pose_jacobian_dict(response.poses, response.jacobians)
     except rospy.ServiceException as e:
         print(e)
 
 if __name__ == "__main__":
-    pose_jacobian_dict = request_robot_pose_jacobian_server('right')
+    pose_jacobian_dict = request_robot_pose_jacobian_server()
     print(pose_jacobian_dict)

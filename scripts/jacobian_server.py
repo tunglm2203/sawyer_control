@@ -29,7 +29,6 @@ def handle_get_robot_pose_jacobian(request):
 
     for joint in link_names:
         # Compute pose for each joint
-        joint = request.name + joint
         pose = kin.forward(joint_angles, joint)
         pose = np.squeeze(np.asarray(pose))
         pose = [pose[0][3], pose[1][3], pose[2][3]]
