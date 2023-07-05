@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.msg import msg_arm_actions
+from sawyer_control.msg import msg_arm_joint_velocity_action
 from sawyer_control import PREFIX
 
 
 def actions_publisher():
-    node_name = PREFIX + 'arm_actions_publisher'
-    pub_name = PREFIX + 'arm_actions_pub'
+    node_name = PREFIX + 'arm_joint_velocity_action_publisher'
+    pub_name = PREFIX + 'arm_joint_velocity_action_pub'
     rospy.init_node(node_name, anonymous=True)
 
     global action_pub
-    action_pub = rospy.Publisher(pub_name, msg_arm_actions, queue_size=10)
+    action_pub = rospy.Publisher(pub_name, msg_arm_joint_velocity_action, queue_size=10)
 
 
 def send_action(action):

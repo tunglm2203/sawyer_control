@@ -51,7 +51,8 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   msg_arm_actions.msg
+   msg_arm_joint_torque_action.msg
+   msg_arm_joint_velocity_action.msg
    msg_gripper_action.msg
  )
 
