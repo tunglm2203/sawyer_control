@@ -39,7 +39,7 @@ def request_observation_server(tip_name="right_gripper_tip"):
             print(e)
 
 
-def request_joint_angles_server(ee_geometry, current_joint_angles, tip_name="right_gripper_tip"):
+def request_ik_server(ee_geometry, current_joint_angles, tip_name="right_gripper_tip"):
     server_name = PREFIX + 'ik'
     rospy.wait_for_service(server_name)
     try:

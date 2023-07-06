@@ -103,7 +103,7 @@ def quat_inverse(quaternion):
     return quat_conjugate(quaternion) / np.dot(quaternion, quaternion)
 
 
-def euler_to_quat(rotation, quat=None):
+def euler_to_quat_mul(rotation, quat=None):
     """ Returns a quaternion of a euler rotation """
     q1 = Quaternion(axis=[1, 0, 0], degrees=rotation[0])
     q2 = Quaternion(axis=[0, 1, 0], degrees=rotation[1])
@@ -113,9 +113,9 @@ def euler_to_quat(rotation, quat=None):
     #     convert_quat(mat2quat(euler2mat(np.array(rotation) / 180.0 * np.pi)), to="wxyz")
     # )
     if quat is None:
-        final_quat = list(q)
+        final_quat = np.array(list(q), dtype=np.float64)
     else:
-        final_quat = list(Quaternion(quat) * q)
+        final_quat = np.array(list(Quaternion(quat) * q), dtype=np.float64)
     return final_quat
 
 
