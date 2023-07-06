@@ -26,8 +26,8 @@ def handle_get_observation(request):
     joint_torques = [joint_torques_dict[joint] for joint in joint_names]
 
     # *** Important ***: There are 3 supported tips: ['right_hand', 'right_gripper_tip', 'right_hand_camera']
-    # We only consider pose and velocity of a tip named "right_gripper_tip"
-    endpoint_state = arm.tip_state('right_gripper_tip')
+    tip_name = request.tip_name
+    endpoint_state = arm.tip_state(tip_name)
 
     # Get end-effector geometry
     endpoint_pose = copy.copy(endpoint_state.pose)  # Cartesian pose {position (Point msg), orientation (Quaternion msg)}

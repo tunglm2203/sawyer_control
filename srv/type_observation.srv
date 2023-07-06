@@ -1,4 +1,5 @@
 # request
+string tip_name
 ---
 # response
 float64[] joint_angles

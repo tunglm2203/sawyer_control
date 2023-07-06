@@ -16,7 +16,7 @@ EXCEPTION_VERBOSE = False   # Option to print all exception from ROS
 """
 # ========================== ROS clients ==========================
 """
-def request_observation_server():
+def request_observation_server(tip_name="right_gripper_tip"):
     """
     Return:
         joint_angles: ordered dict of joint name Keys to angle (rad) Values
@@ -28,7 +28,7 @@ def request_observation_server():
     rospy.wait_for_service(server_name)
     try:
         request = rospy.ServiceProxy(server_name, type_observation, persistent=True)
-        response = request()    # Get observation from observation_server
+        response = request(tip_name)    # Get observation from observation_server
         joint_angles = np.array(response.joint_angles, dtype=np.float64)
         joint_velocities = np.array(response.joint_velocities, dtype=np.float64)
         endpoint_geometry = np.array(response.endpoint_geometry, dtype=np.float64)
