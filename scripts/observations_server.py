@@ -3,6 +3,7 @@ import rospy
 import intera_interface
 
 import copy
+import time
 
 from sawyer_control.srv import type_observation, type_observationResponse
 from sawyer_control import PREFIX
@@ -52,6 +53,7 @@ def observation_server():
     global arm
     arm = intera_interface.Limb('right')
 
+    time.sleep(0.1)     # This is important: waiting Limb() to be initialized completely
     # This is used to initialize tips to get their pose in gazebo, not sure why it solved problem that lacks 'right_hand'
     tip_names_to_initialize = ['right_hand', 'right_gripper_tip', 'right_hand_camera']
     for tip_name in tip_names_to_initialize:
