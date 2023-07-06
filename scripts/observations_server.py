@@ -52,6 +52,11 @@ def observation_server():
     global arm
     arm = intera_interface.Limb('right')
 
+    # This is used to initialize tips to get their pose in gazebo, not sure why it solved problem that lacks 'right_hand'
+    tip_names_to_initialize = ['right_hand', 'right_gripper_tip', 'right_hand_camera']
+    for tip_name in tip_names_to_initialize:
+        arm.joint_angles_to_cartesian_pose(arm.joint_angles(), end_point=tip_name)
+
     server = rospy.Service(server_name, type_observation, handle_get_observation)
     rospy.spin()
 

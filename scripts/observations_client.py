@@ -9,12 +9,12 @@ import numpy as np
 """
 This file is used for test observation_server, it is not called in launch file.
 """
-def request_observation_server():
+def request_observation_server(tip_name="right_gripper_tip"):
     server_name = PREFIX + 'observation'
     rospy.wait_for_service(server_name)
     try:
         request = rospy.ServiceProxy(server_name, type_observation, persistent=True)
-        response = request()  # Structure of message in srv/observation.srv
+        response = request(tip_name)  # Structure of message in srv/observation.srv
         return (
             np.array(response.joint_angles),
             np.array(response.joint_velocities),
@@ -27,7 +27,10 @@ def request_observation_server():
 
 
 if __name__ == "__main__":
-    angle, vel, torque, ee_pose, ee_vel = request_observation_server()
+    tip_name = "right_hand"
+    # tip_name = "right_gripper_tip"
+    # tip_name = "right_hand_camera"
+    angle, vel, torque, ee_pose, ee_vel = request_observation_server(tip_name)
     print("Joint angle (dim={}): {}".format(angle.shape, angle))
     print("Joint velocity (dim={}): {}".format(vel.shape, vel))
     print("Joint torque (dim={}): {}".format(torque.shape, torque))
