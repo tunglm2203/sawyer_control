@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 
-from sawyer_control.pd_controllers.impedance_controller import ImpedanceController
+from sawyer_control.controllers.impedance_controller import ImpedanceController
 from sawyer_control.srv import type_angle_action, type_angle_actionResponse
 from sawyer_control import PREFIX
 

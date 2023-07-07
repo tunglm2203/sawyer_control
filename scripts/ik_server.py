@@ -5,7 +5,7 @@ import intera_interface
 
 from sawyer_control.srv import type_ik, type_ikResponse
 from sawyer_control import PREFIX
-from sawyer_control.pd_controllers.inverse_kinematics import get_pose_stamped, get_joint_angles, joint_state_from_cmd
+from sawyer_control.controllers.inverse_kinematics import get_pose_stamped, get_joint_angles, joint_state_from_cmd
 from sawyer_control.configs import ros_config
 
 
