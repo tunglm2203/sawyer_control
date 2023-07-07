@@ -12,8 +12,8 @@ from sawyer_control import PREFIX
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_kinematics import KDLKinematics
 
+from sawyer_control.configs.ros_config import LINK_NAMES
 
-link_names = ['right_l2', 'right_l3', 'right_l4', 'right_l5', 'right_l6', 'right_hand']
 
 
 def handle_get_robot_pose_jacobian(request):
@@ -27,7 +27,7 @@ def handle_get_robot_pose_jacobian(request):
     joint_angles_dict = arm.joint_angles()
     joint_angles = [joint_angles_dict[joint] for joint in joint_names]
 
-    for joint in link_names:
+    for joint in LINK_NAMES:
         # Compute pose for each joint
         pose = kin.forward(joint_angles, joint)
         pose = np.squeeze(np.asarray(pose))
@@ -50,7 +50,7 @@ def robot_pose_jacobian_server():
     global kin
     global arm
 
-    kin = KDLKinematics(robot, 'base', 'right_hand')
+    kin = KDLKinematics(robot, 'base', 'right_gripper_tip')
     arm = intera_interface.Limb('right')
 
     server = rospy.Service(server_name, type_arm_pose_and_jacobian, handle_get_robot_pose_jacobian)

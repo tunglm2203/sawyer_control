@@ -8,16 +8,17 @@ from sawyer_control import PREFIX
 from collections import OrderedDict
 import numpy as np
 
+from sawyer_control.configs.ros_config import LINK_NAMES
+
+
 """
 This file is used for test robot_pose_jacobian_server, it is not called in launch file.
 """
 
-link_names = ['right_l2', 'right_l3', 'right_l4', 'right_l5', 'right_l6', 'right_hand']
-
 def unpack_pose_jacobian_dict(poses, jacobians):
     pose_jacobian_dict = OrderedDict()
     pose_counter = jac_counter = 0
-    for link in link_names:
+    for link in LINK_NAMES:
         pose = poses[pose_counter:pose_counter + 3]
         jacobian = np.array([
             jacobians[jac_counter + 3:jac_counter + 10],
@@ -43,4 +44,6 @@ def request_robot_pose_jacobian_server():
 
 if __name__ == "__main__":
     pose_jacobian_dict = request_robot_pose_jacobian_server()
-    print(pose_jacobian_dict)
+
+    for k, v in pose_jacobian_dict.items():
+        print("{}: {}".format(k, v))
