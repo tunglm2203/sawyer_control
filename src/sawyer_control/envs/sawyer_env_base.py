@@ -1,9 +1,9 @@
 import rospy
 
+import os
 import abc
 import cv2
 import copy
-
 
 from collections import OrderedDict
 import gym
@@ -12,13 +12,12 @@ gym.logger.set_level(40)
 from sawyer_control.envs.utils import *
 from sawyer_control.ros.ros_utils import *
 
-from sawyer_control.pd_controllers.joint_angle_pd_controller import AnglePDController
+from sawyer_control.controllers.joint_angle_pd_controller import AnglePDController
 from sawyer_control import PREFIX
 from sawyer_control.core.multitask_env import MultitaskEnv
 from sawyer_control.configs.config import config_dict as config
 
 # Import message types
-
 from sawyer_control.msg import (
     msg_arm_joint_torque_action, msg_arm_joint_velocity_action,
     msg_gripper_action,
@@ -44,7 +43,6 @@ GRIPPER_OPEN_POSITION = 0.041667
 
 CAMERA_WIDTH = 480
 CAMERA_HEIGHT = 480
-
 
 
 class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
@@ -75,7 +73,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._move_speed = move_speed   # step size of move actions (scale ik action in position)
         self._rotate_speed = rotation_speed # step size of rotate actions (scale rotation in "ik" control mode)
         self._discrete_grip = True      # make gripper action either -1 or 1
-        self._rescale_actions = False    # rescale actions to [-1,1] and normalize to the control range
+        self._rescale_actions = True    # rescale actions to [-1,1] and normalize to the control range
         self._auto_align = True         # automatically (perfectly) align two parts when connected
         self._arms = ["right"]          # For Sawyer
 
@@ -99,7 +97,19 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         # self._endpoint_name = "right_gripper_tip"  # ["right_hand", "right_gripper_tip"]
         self._endpoint_name = "right_hand"  # ["right_hand", "right_gripper_tip"]
 
-        self.use_connect_action = True  # Use action "connect", that automatically attempts to connect 2 furniture parts
+        # Define min/max range for arm action (i.e., first 7 actions) to scale
+        if self._control_type in ["torque"]:
+            self.min_range_arm_action = np.array(self.config.JOINT_TORQUE_LOW)
+            self.max_range_arm_action = np.array(self.config.JOINT_TORQUE_HIGH)
+            self.arm_action_bias = 0.5 * (self.min_range_arm_action + self.max_range_arm_action)
+            self.arm_action_scale = 0.5 * (self.max_range_arm_action - self.min_range_arm_action)
+        elif self._control_type in ["impedance", "ik_pos", "ik", "ik_quaternion"]:
+            self.min_range_arm_action = np.array([-1.74, -1.328, -1.957, -1.957, -3.485, -3.485, -4.545])
+            self.max_range_arm_action = np.array([1.74, 1.328, 1.957, 1.957, 3.485, 3.485, 4.545])
+            self.arm_action_bias = 0.5 * (self.min_range_arm_action + self.max_range_arm_action)
+            self.arm_action_scale = 0.5 * (self.max_range_arm_action - self.min_range_arm_action)
+
+        self.use_connect_action = False  # Use action "connect", that automatically attempts to connect 2 furniture parts
 
         self.n_objects = None           # Set to number of object in the scenes
 
@@ -214,36 +224,26 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         Setup action space depends on _control_type.
         """
         if self._control_type in ["torque", "impedance"]:
-            low = np.hstack([self.config.JOINT_TORQUE_LOW, -1.0, -1.0])
-            high = np.hstack([self.config.JOINT_TORQUE_HIGH, 1.0 ,1.0])
             self.action_space = gym.spaces.Box(
-                low=low, high=high,
+                low=-1.0, high=1.0,
                 shape=(ROBOT_DOF + GRIPPER_DOF + 1, ),  # joints (7), select (1), connect (1)
                 dtype=np.float32,
             )
         elif self._control_type in ["ik_pos"]:
-            low = np.hstack([self.config.POSITION_CONTROL_LOW, -1.0, -1.0])
-            high = np.hstack([self.config.POSITION_CONTROL_HIGH, 1.0, 1.0])
             self.action_space = gym.spaces.Box(
-                low=low, high=high,
+                low=-1.0, high=1.0,
                 shape=(3 + GRIPPER_DOF + 1, ),      # move (3), select (1), connect (1)
                 dtype=np.float32,
             )
         elif self._control_type in ["ik"]:
-            const = 1.0
-            low = np.hstack([self.config.POSITION_CONTROL_LOW, -const * np.ones(3), -1.0, -1.0])
-            high = np.hstack([self.config.POSITION_CONTROL_HIGH, const * np.ones(3), 1.0, 1.0])
             self.action_space = gym.spaces.Box(
-                low=low, high=high,
+                low=-1.0, high=1.0,
                 shape=(3 + 3 + GRIPPER_DOF + 1, ),    # move (3), rotate (3), select (1), connect (1)
                 dtype=np.float32
             )
         elif self._control_type in ["ik_quaternion"]:
-            const = 1.0
-            low = np.hstack([self.config.POSITION_CONTROL_LOW, -const * np.ones(4), -1.0, -1.0])
-            high = np.hstack([self.config.POSITION_CONTROL_HIGH, const * np.ones(4), 1.0, 1.0])
             self.action_space = gym.spaces.Box(
-                low=low, high=high,
+                low=-1.0, high=1.0,
                 shape=(3 + 4 + GRIPPER_DOF + 1, ),  # move (3), rotate (4-wxyz), select (1), connect (1)
                 dtype=np.float32
             )
@@ -276,33 +276,63 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         """
         Resets robot: initial position, internal variables.
         """
-        def check_ee_pose_close_to_target(current_pose, target_pose):
-            diff_pos = np.linalg.norm(target_pose[:3] - current_pose[:3])
-            diff_quat = np.linalg.norm(target_pose[3:7] - current_pose[3:7])
-            if diff_pos < 0.01 and diff_quat < 0.01:
-                return True
-            return False
+
+        # def check_ee_pose_close_to_target(current_pose, target_pose):
+        #     diff_pos = np.linalg.norm(target_pose[:3] - current_pose[:3])
+        #     diff_quat = np.linalg.norm(target_pose[3:7] - current_pose[3:7])
+        #     if diff_pos < 0.01 and diff_quat < 0.01:
+        #         return True
+        #     return False
 
         if self.reset_free:
             pass
         else:
-            if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
-                gripper_action = GRIPPER_OPEN_POSITION if self._use_gripper else GRIPPER_CLOSE_POSITION
+            # Move to neutral pose
+            for i in range(self.config.RESET_LENGTH):
+                current_joint_angles, current_joint_vels, _, _ = request_observation_server()
+                torques = self.AnglePDController._compute_pd_forces(current_joint_angles,
+                                                                    current_joint_vels)
+                torques = torques * 0.2
+                if self.in_reset:
+                    torques = np.clip(torques, self.config.RESET_TORQUE_LOW, self.config.RESET_TORQUE_HIGH)
+                else:
+                    torques = np.clip(torques, self.config.JOINT_TORQUE_LOW, self.config.JOINT_TORQUE_HIGH)
+                self.send_joint_torque_action(torques)
+                self.send_gripper_action(GRIPPER_OPEN_POSITION)
 
-                joint_angles_seed = self.config.RESET_ANGLES  # Using seed_angle is reset angle seems better
-                joint_angles_next = request_ik_server(self.ee_geom_at_reset, joint_angles_seed, self._endpoint_name)
+                if self._check_reset_complete():
+                    break
 
-                while True:
-                    ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
-                    self.send_angle_action(joint_angles_next, ee_geom_current[:3], self.ee_geom_at_reset[:3])
-                    self.send_gripper_action(gripper_action)
-
-                    if check_ee_pose_close_to_target(ee_geom_current, self.ee_geom_at_reset):
-                        break
-            elif self._control_type in ["torque", "impedance"]:
-                self._safe_move_to_neutral()
-            else:
-                    raise NotImplementedError
+            # if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
+            #     gripper_action = GRIPPER_OPEN_POSITION if self._use_gripper else GRIPPER_CLOSE_POSITION
+            #
+            #     joint_angles_seed = self.config.RESET_ANGLES  # Using seed_angle is reset angle seems better
+            #     joint_angles_next = request_ik_server(self.ee_geom_at_reset, joint_angles_seed, self._endpoint_name)
+            #
+            #     while True:
+            #         ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
+            #         self.send_angle_action(joint_angles_next, ee_geom_current[:3], self.ee_geom_at_reset[:3])
+            #         self.send_gripper_action(gripper_action)
+            #
+            #         if check_ee_pose_close_to_target(ee_geom_current, self.ee_geom_at_reset):
+            #             break
+            # elif self._control_type in ["torque", "impedance"]:
+            #     for i in range(self.config.RESET_LENGTH):
+            #         current_joint_angles, current_joint_vels, _, _ = request_observation_server()
+            #         torques = self.AnglePDController._compute_pd_forces(current_joint_angles,
+            #                                                             current_joint_vels)
+            #         torques = torques * 0.2
+            #         if self.in_reset:
+            #             torques = np.clip(torques, self.config.RESET_TORQUE_LOW, self.config.RESET_TORQUE_HIGH)
+            #         else:
+            #             torques = np.clip(torques, self.config.JOINT_TORQUE_LOW, self.config.JOINT_TORQUE_HIGH)
+            #         self.send_joint_torque_action(torques)
+            #         self.send_gripper_action(GRIPPER_OPEN_POSITION)
+            #
+            #         if self._check_reset_complete():
+            #             break
+            # else:
+            #     raise NotImplementedError
 
     def _reset_environment(self):
         """
@@ -358,17 +388,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         elif self._control_type in ["torque"]:
             self._torque_act(applied_action)
         elif self._control_type in ["impedance"]:
-            raise
-        elif self._control_type in ["position"]:
-            raise
-        elif self._control_type in ["position_orientation"]:
-            raise
-        elif self._control_type in ["joint_impedance"]:
-            raise
-        elif self._control_type in ["joint_torque"]:
-            raise
-        elif self._control_type in ["joint_velocity"]:
-            raise
+            self._velocity_act(applied_action)
         else:
             raise NotImplementedError
 
@@ -412,7 +432,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         if use_impedance_control:
             # From (current and next joint) + duration, intermediate waypoints are constructed, then from these waypoints,
             # we compute intermediate velocities, acceleration to send joint_command
-            # Reference: see ImpedanceController in src/sawyer_control/pd_controllers/impedance_controller.py
+            # Reference: see ImpedanceController in src/sawyer_control/controllers/impedance_controller.py
             ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
             ee_pos_current = ee_geom_current[:3]
             if joint_angles_next is not None:
@@ -427,45 +447,36 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             velocities = self.get_velocity_control(self.joint_angles, joint_angles_next)
 
             # scale velocity in range
-            velocities = self._scale_action(velocities)
+            if self._rescale_actions:
+                velocities = self._scale_action(velocities)
 
             # keep trying to reach the target in a closed-loop
             for i in range(self._action_repeat):
-                for _ in range(int(self._control_timestep / self._model_timestep)):
-                    self.send_joint_velocity_action(velocities)
-
+                self.send_joint_velocity_action(velocities)
                 if i < self._action_repeat:
                     velocities = self.get_velocity_control(self.joint_angles)
-                    # scale velocity in range
-                    velocities = self._scale_action(velocities)
+                    if self._rescale_actions:# scale velocity in range
+                        velocities = self._scale_action(velocities)
 
                 self.send_gripper_action(gripper_action)
 
     def _torque_act(self, action):
         gripper_action = action[-2]
-        if self.use_safety_box:
-            safety_box = self.config.RESET_SAFETY_BOX if self.in_reset else self.config.TORQUE_SAFETY_BOX
-            self.pose_jacobian_dict = self.get_latest_pose_jacobian_dict()
-
-            # Adjust the action if its elements out of safety box
-            pose_jacobian_dict_of_joints_not_in_box = self.get_pose_jacobian_dict_of_joints_not_in_box(safety_box)
-            if len(pose_jacobian_dict_of_joints_not_in_box) > 0:
-                forces_dict = self._get_adjustment_forces_per_joint_dict(pose_jacobian_dict_of_joints_not_in_box, safety_box)
-                torques = np.zeros(ROBOT_DOF)
-                for joint in forces_dict:
-                    jacobian = pose_jacobian_dict_of_joints_not_in_box[joint][1]
-                    force = forces_dict[joint]
-                    torques = torques + np.dot(jacobian.T, force).T
-                torques[-1] = 0 # we don't need to move the wrist
-                action = torques
-
-        torques = action[:ROBOT_DOF]
-        if self.in_reset:
-            torques = np.clip(torques, self.config.RESET_TORQUE_LOW, self.config.RESET_TORQUE_HIGH)
-        else:
-            torques = np.clip(torques, self.config.JOINT_TORQUE_LOW, self.config.JOINT_TORQUE_HIGH)
+        torques = action[:ROBOT_DOF].copy()
+        if self._rescale_actions:
+            torques = self._scale_action(torques)
         self.send_joint_torque_action(torques)
         self.send_gripper_action(gripper_action)
+
+    def _velocity_act(self, action):
+        gripper_action = action[-2]
+        velocities = action[:ROBOT_DOF].copy()
+        if self._rescale_actions:
+            velocities = self._scale_action(velocities)
+
+        self.send_joint_velocity_action(velocities)
+        self.send_gripper_action(gripper_action)
+
 
     def _get_obs(self, include_qpos=False):
         state = OrderedDict()
@@ -512,16 +523,14 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         return velocities
 
     def _scale_action(self, action):
-        _action = action.copy()
-        if self._rescale_actions:
-            action = np.clip(_action, -1.0, 1.0)
-            # TODO: Need to fill this value
-            ctrl_range_min, ctrl_range_max = 0., 0.
-            mean = 0.5 * (ctrl_range_min + ctrl_range_max)
-            scale = 0.5 * (ctrl_range_max - ctrl_range_min)
-            applied_action = mean + scale * _action
-        else:
-            applied_action = _action
+        applied_action = action.copy()
+        assert (action <= 1.0).all() and (action >= -1.0).all()
+        if self._control_type in ["torque"]:
+            applied_action[:ROBOT_DOF] = self.arm_action_bias + self.arm_action_scale * action[:ROBOT_DOF]
+        elif self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
+            applied_action[:ROBOT_DOF] = self.arm_action_bias + self.arm_action_scale * action[:ROBOT_DOF]
+        elif self._control_type in ["impedance"]:
+            raise NotImplementedError
         return applied_action
 
     @property
@@ -559,15 +568,6 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
     def _get_info(self):
         return dict()
 
-    def _safe_move_to_neutral(self):
-        for i in range(self.config.RESET_LENGTH):
-            current_joint_angles, current_joint_vels, _, _ = request_observation_server()
-            torques = self.AnglePDController._compute_pd_forces(current_joint_angles, current_joint_vels)
-            self._torque_act(torques * 0.2)
-            # TODO: check here
-            if self._check_reset_complete():
-                break
-
     def _check_reset_complete(self):
         # Check whether joint angles are near the predefined reset position
         joint_angle_current = self._get_joint_angles()
@@ -582,7 +582,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         velocities = np.abs(velocities)
 
         # TODO: Move this one to the config
-        VELOCITY_THRESHOLD = .002 * np.ones(ROBOT_DOF)
+        VELOCITY_THRESHOLD = .04 * np.ones(ROBOT_DOF)
 
         is_pause = (velocities < VELOCITY_THRESHOLD).all()
         reset_completed = within_desired_reset_pose and is_pause
@@ -699,12 +699,14 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self.rate.sleep()
 
     def send_joint_torque_action(self, joint_torque_action):
-        self.arm_joint_torque_publisher.publish(joint_torque_action)
-        self.rate.sleep()
+        for _ in range(int(self._control_timestep / self._model_timestep)):
+            self.arm_joint_torque_publisher.publish(joint_torque_action)
+            self.rate.sleep()
 
     def send_joint_velocity_action(self, joint_velocity_action):
-        self.arm_joint_velocity_publisher.publish(joint_velocity_action)
-        self.rate.sleep()
+        for _ in range(int(self._control_timestep / self._model_timestep)):
+            self.arm_joint_velocity_publisher.publish(joint_velocity_action)
+            self.rate.sleep()
 
     def send_gripper_action(self, action):
         self.gripper_action_publisher.publish(action)
