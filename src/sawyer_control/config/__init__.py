@@ -1,2 +1,2 @@
-import sawyer_control.config.default_config as default_config
+from sawyer_control.config import default_config
 
