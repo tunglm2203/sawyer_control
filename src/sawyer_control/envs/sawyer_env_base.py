@@ -292,11 +292,11 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
                 # torques = torques * 0.2
                 torques = np.clip(torques, self.config.JOINT_TORQUE_LOWER, self.config.JOINT_TORQUE_UPPER)
                 self.send_joint_torque_action(torques, repeat=False)
-                self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
-
                 if self._check_reset_complete():
                     print("[ENV] Reset finished early after {} trials.".format(i))
                     break
+
+            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
 
             # if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
             #     gripper_action = GRIPPER_OPEN_POSITION if self._use_gripper else GRIPPER_CLOSE_POSITION
