@@ -1,68 +1,68 @@
 import numpy as np
 from gym.spaces import Box
-from sawyer_control.configs.ros_config import *
 
-# SPACES
-JOINT_ANGLES_HIGH = np.array([
-    1.70167993,
-    1.04700017,
-    3.0541791,
-    2.61797006,
-    3.05900002,
-    2.09400001,
-    3.05899961
-])
 
-JOINT_ANGLES_LOW = np.array([
-    -1.70167995,
-    -2.14700025,
-    -3.0541801,
-    -0.04995198,
-    -3.05900015,
-    -1.5708003,
-    -3.05899989
-])
+# =============================== SCOPE FOR ROBOT CONSTANT ===============================
+USE_GAZEBO = True
 
-JOINT_VEL_HIGH = 2 * np.ones(7)
-JOINT_VEL_LOW = -2 * np.ones(7)
+CONTROL_FREQ = 20
+ROBOT_DOF = 7
+GRIPPER_DOF = 1
 
-MAX_TORQUES = 0.5 * np.array([8, 7, 6, 5, 4, 3, 2])
+GRIPPER_CLOSE_POSITION = 0.0
+GRIPPER_OPEN_POSITION = 0.041667
 
-JOINT_TORQUE_HIGH = MAX_TORQUES
-JOINT_TORQUE_LOW = -1 * MAX_TORQUES
+CAMERA_WIDTH = 480
+CAMERA_HEIGHT = 480
 
-JOINT_VALUE_HIGH = {
-    'position': JOINT_ANGLES_HIGH,
-    'velocity': JOINT_VEL_HIGH,
-    'torque': JOINT_TORQUE_HIGH,
-}
-JOINT_VALUE_LOW = {
-    'position': JOINT_ANGLES_LOW,
-    'velocity': JOINT_VEL_LOW,
-    'torque': JOINT_TORQUE_LOW,
-}
+# Joints name convention: https://support.rethinkrobotics.com/support/solutions/articles/80000976455-sawyer-hardware
+JOINT_NAMES = ['right_j0', 'right_j1', 'right_j2', 'right_j3', 'right_j4', 'right_j5', 'right_j6']
 
-END_EFFECTOR_POS_LOW = -1.2 * np.ones(3)
-END_EFFECTOR_POS_HIGH = 1.2 * np.ones(3)
+# Links name used to compute Jacobian
+LINK_NAMES = ['right_l2', 'right_l3', 'right_l4', 'right_l5', 'right_l6', 'right_hand', 'right_gripper_tip']
 
-END_EFFECTOR_ANGLE_LOW = -1 * np.ones(4)
-END_EFFECTOR_ANGLE_HIGH = np.ones(4)
 
-END_EFFECTOR_VALUE_LOW = {
-    'position': END_EFFECTOR_POS_LOW,
-    'angle': END_EFFECTOR_ANGLE_LOW,
-}
 
-END_EFFECTOR_VALUE_HIGH = {
-    'position': END_EFFECTOR_POS_HIGH,
-    'angle': END_EFFECTOR_ANGLE_HIGH,
-}
 
-POSITION_CONTROL_LOW = -1 * np.ones(3)
-POSITION_CONTROL_HIGH = np.ones(3)
+# =============================== SCOPE FOR INITIALIZATION ===============================
+# Initial joint positions at reset time for two type of end-effector frame: 'right_hand', 'right_gripper_tip'
+RIGHT_HAND_RESET_POSE = [
+    0.626337315384, 0.10272965114, 0.4217483153,
+    -0.00142460053167, 0.99999999999, -0.00177030764765, 0.00253311793936
+]  # [(xyz), (xyzw)]
+RIGHT_GRIPPER_TIP_RESET_POSE = [
+    0.630835664505, 0.100420400837, 0.28622261066,
+    -0.00193828719291, 0.99999999999, -0.00177030764765, 0.00253311793936
+]  # [(xyz), (xyzw)]
 
-RESET_TORQUE_LOW = -5
-RESET_TORQUE_HIGH = 5
+# This is used to seed the angles for computing Inverse Kinematic
+SEED_ANGLES = np.array([-0.28, -0.60, 0.00, 1.86, 0.00, 0.3, 1.57])
+
+NUM_TRIALS_AT_RESET = 100   # Num of iterations for resetting
+TOLERANCE_AT_RESET = 0.15 * np.ones(ROBOT_DOF)  # Threshold to stop loop at reset
+
+
+
+
+# =============================== SCOPE FOR LIMITS ===============================
+# This range limit of joint's positions, velocities, torques is obtained
+# from sawyer_robot/sawyer_description/urdf/sawyer_base.urdf.xacro
+if USE_GAZEBO:
+    JOINT_POS_UPPER = np.array([3.0503, 2.2736, 3.0426, 3.0439, 2.9761, 2.9761, 3.14], dtype=np.float32)
+    JOINT_POS_LOWER = np.array([-3.0503, -3.8095, -3.0426, -3.0439, -2.9761, -2.9761, -3.14], dtype=np.float32)
+else:
+    JOINT_POS_UPPER = np.array([3.0503, 2.2736, 3.0426, 3.0439, 2.9761, 2.9761, 4.7124], dtype=np.float32)
+    JOINT_POS_LOWER = np.array([-3.0503, -3.8095, -3.0426, -3.0439, -2.9761, -2.9761, -4.7124], dtype=np.float32)
+
+JOINT_VEL_UPPER = np.array([1.74, 1.328, 1.957, 1.957, 3.485, 3.485, 4.545], dtype=np.float32)
+JOINT_VEL_LOWER = -1.0 * JOINT_VEL_UPPER
+
+JOINT_TORQUE_UPPER = np.array([80.0, 80.0, 40.0, 40.0, 9.0, 9.0, 9.0], dtype=np.float32)
+JOINT_TORQUE_LOWER = -1.0 * JOINT_TORQUE_UPPER
+
+# End-effector limits: user define
+EE_POS_LOWER = np.array([-1.5, -1.5, 0.0], dtype=np.float64)
+EE_POS_UPPER = np.array([1.5, 1.5, 1.5], dtype=np.float64)
 
 # SAFETY BOX SETTINGS
 SAFETY_FORCE_MAGNITUDE = 5
@@ -77,34 +77,7 @@ TORQUE_SAFETY_BOX_LOWS = np.array([0.3, -0.4, 0.2])
 TORQUE_SAFETY_BOX_HIGHS = np.array([0.7, 0.4, 0.7])
 TORQUE_SAFETY_BOX = Box(TORQUE_SAFETY_BOX_LOWS, TORQUE_SAFETY_BOX_HIGHS, dtype=np.float32)
 
-# POSITION_SAFETY_BOX_LOWS = np.array([.2, -.2, .06])
-# POSITION_SAFETY_BOX_HIGHS = np.array([.6, .2, 0.5])
 
-# TUNG: Space for moving in XY-plane
-# POSITION_SAFETY_BOX_LOWS = np.array([0.45, -.2, .065])
-# POSITION_SAFETY_BOX_HIGHS = np.array([0.85, .2, .07])
-POSITION_SAFETY_BOX_LOWS = np.array([0.5, -.2, .065])
-POSITION_SAFETY_BOX_HIGHS_ACT = np.array([0.7, .2, .07])
-POSITION_SAFETY_BOX_HIGHS = np.array([0.7, .2, .12])
-POSITION_SAFETY_BOX = Box(POSITION_SAFETY_BOX_LOWS, POSITION_SAFETY_BOX_HIGHS, dtype=np.float32)
+POSITION_SAFETY_BOX = Box(EE_POS_LOWER, EE_POS_UPPER, dtype=np.float32)
 
-# POSITION_RESET_POS = np.array([0.73, 0.0, 0.34222245])
-POSITION_RESET_POS = np.array([0.50335, 0.046513, 0.06])   # (x, y, z)
-OBJ_RESET_POS = np.array([0.6, 0, 0.86])
 
-SLEEP_BEFORE_SENDING_CMD_SOCKET = 1
-SLEEP_BETWEEN_2_CMDS = 0.5
-SLEEP_AFTER_SENDING_CMD_SOCKET = 1
-
-# MISCELLANEOUS
-RESET_LENGTH = 200
-RESET_ERROR_THRESHOLD = .15 * np.ones(7)
-UPDATE_HZ = 20  # 20
-
-# JOINT_CONTROLLER_SETTINGS
-JOINT_POSITION_SPEED = .1
-JOINT_POSITION_TIMEOUT = .5
-
-# OBJECT IN PUSHER ENV
-OBJECT_NAME = 'cylinder'
-OBJECT_RADIUS = 0.04 + 0.04     # +0.04 to avoid collision
