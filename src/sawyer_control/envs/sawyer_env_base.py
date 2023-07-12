@@ -43,10 +43,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             self,
             control_type="torque",
             use_safety_box=True,
-            torque_action_scale=1,
             move_speed=0.01,
             rotation_speed=0.01,   # 22.5 in degree
-            fix_goal=False,
             max_speed = 0.05,
             reset_free=False,
             img_start_col=350, #can range from  0-999
@@ -107,6 +105,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
 
         self._action_on = False         # This flag is used to control by keyboard
 
+        self.queue_size = 1
         self.init_rospy()
         print("[ENV] ROS is successfully initialized.")
 
@@ -124,11 +123,10 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self.pose_jacobian_dict = self.get_latest_pose_jacobian_dict()
 
         # Set internal params
-        self.torque_action_scale = torque_action_scale
-        # self.position_action_scale = position_action_scale
+        self.joint_torques_scale = 1.0
+        self.joint_velocities_scale = 1.0
+        
         self.in_reset = True
-        self._state_goal = None
-        self.fix_goal = fix_goal
 
         if self._endpoint_name == "right_gripper_tip":
             self.ee_geom_at_reset = np.array(self.config.RIGHT_GRIPPER_TIP_RESET_POSE, dtype=np.float64)
@@ -291,12 +289,13 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
                 current_joint_angles, current_joint_vels, _, _ = request_observation_server()
                 torques = self.AnglePDController._compute_pd_forces(current_joint_angles,
                                                                     current_joint_vels)
-                torques = torques * 0.15
+                # torques = torques * 0.2
                 torques = np.clip(torques, self.config.JOINT_TORQUE_LOWER, self.config.JOINT_TORQUE_UPPER)
                 self.send_joint_torque_action(torques, repeat=False)
                 self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
 
                 if self._check_reset_complete():
+                    print("[ENV] Reset finished early after {} trials.".format(i))
                     break
 
             # if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
@@ -481,7 +480,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         torques = action[:self.dof].copy()
         if self._rescale_actions:
             torques = self._scale_action(torques)
-        # print(f"Commanded torques: {torques}")
+        print(f"Commanded torques: {torques}")
         self.send_joint_torque_action(torques)
         self.send_gripper_action(gripper_action)
 
@@ -490,7 +489,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         velocities = action[:self.dof].copy()
         if self._rescale_actions:
             velocities = self._scale_action(velocities)
-
+        print(f"Commanded velocities: {velocities}")
         self.send_joint_velocity_action(velocities)
         self.send_gripper_action(gripper_action)
 
@@ -546,9 +545,9 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         assert (action <= 1.0).all() and (action >= -1.0).all()
         if self._control_type in ["torque"]:
             applied_action[:self.dof] = self.arm_action_bias + self.arm_action_scale * action[:self.dof]
-        elif self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
+        elif self._control_type in ["ik_pos", "ik", "ik_quaternion", "impedance"]:
             applied_action[:self.dof] = self.arm_action_bias + self.arm_action_scale * action[:self.dof]
-        elif self._control_type in ["impedance"]:
+        else:
             raise NotImplementedError
         return applied_action
 
@@ -653,9 +652,9 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         arm_joint_velocity_pub_name = PREFIX + 'arm_joint_velocity_action_pub'
         gripper_pub_name = PREFIX + 'gripper_action_pub'
         rospy.init_node(node_name)
-        self.arm_joint_torque_publisher = rospy.Publisher(arm_joint_torque_pub_name, msg_arm_joint_torque_action, tcp_nodelay=True, queue_size=10)
-        self.arm_joint_velocity_publisher = rospy.Publisher(arm_joint_velocity_pub_name, msg_arm_joint_velocity_action, tcp_nodelay=True, queue_size=10)
-        self.gripper_action_publisher = rospy.Publisher(gripper_pub_name, msg_gripper_action, tcp_nodelay=True, queue_size=10)
+        self.arm_joint_torque_publisher = rospy.Publisher(arm_joint_torque_pub_name, msg_arm_joint_torque_action, tcp_nodelay=True, queue_size=self.queue_size)
+        self.arm_joint_velocity_publisher = rospy.Publisher(arm_joint_velocity_pub_name, msg_arm_joint_velocity_action, tcp_nodelay=True, queue_size=self.queue_size)
+        self.gripper_action_publisher = rospy.Publisher(gripper_pub_name, msg_gripper_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.rate = rospy.Rate(self._control_freq)
 
     def send_angle_action(self, target_joint_angles, ee_pos_current, ee_pos_next):
