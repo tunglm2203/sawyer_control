@@ -303,7 +303,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
             #     gripper_action = GRIPPER_OPEN_POSITION if self._use_gripper else GRIPPER_CLOSE_POSITION
             #
-            #     joint_angles_seed = self.config.SEED_ANGLES  # Using seed_angle is reset angle seems better
+            #     joint_angles_seed = self.config.INITIAL_JOINT_ANGLES  # Using seed_angle is reset angle seems better
             #     joint_angles_next = request_ik_server(self.ee_geom_at_reset, joint_angles_seed, self._endpoint_name)
             #
             #     while True:
@@ -443,7 +443,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         ee_geom_next = np.concatenate((ee_pos_next, ee_ori_next))
 
         # Compute target joint angles using IK server
-        joint_angles_seed = self.config.SEED_ANGLES    # Using seed_angle is reset angle seems better
+        joint_angles_seed = self.config.INITIAL_JOINT_ANGLES    # Using seed_angle is reset angle seems better
         joint_angles_next = request_ik_server(ee_geom_next, joint_angles_seed, self._endpoint_name)
 
         if use_impedance_control:

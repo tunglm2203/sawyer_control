@@ -12,7 +12,7 @@ from sawyer_control import PREFIX
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_kinematics import KDLKinematics
 
-from sawyer_control.configs.ros_config import LINK_NAMES
+from sawyer_control.config.default_config import LINK_NAMES
 
 
 

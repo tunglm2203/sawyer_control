@@ -3,15 +3,13 @@ from std_msgs.msg import Empty
 
 import numpy as np
 
-from sawyer_control.configs import base_config
-from sawyer_control.configs import tung_config
+from sawyer_control.config import default_config
 
 class AnglePDController(object):
     """
     PD Controller for Moving to Neutral
     """
-    # def __init__(self, config = base_config):
-    def __init__(self, config=tung_config):
+    def __init__(self, config=default_config):
         # control parameters
         self._rate = 1000  # Hz
         self._missed_cmds = 20.0  # Missed cycles before triggering timeout
@@ -25,9 +23,8 @@ class AnglePDController(object):
         cuff_ns = 'robot/limb/right/suppress_cuff_interaction'
         self._pub_cuff_disable = rospy.Publisher(cuff_ns, Empty, queue_size=1)
 
-        reset_angles = config.RESET_ANGLES
         self.joint_names = config.JOINT_NAMES
-        self._des_angles = dict(zip(self.joint_names, reset_angles))
+        self._des_angles = dict(zip(self.joint_names, config.INITIAL_JOINT_ANGLES))
 
         self.max_stiffness = 20
         self.time_to_maxstiffness = .3

@@ -8,7 +8,7 @@ from sawyer_control import PREFIX
 from collections import OrderedDict
 import numpy as np
 
-from sawyer_control.configs.ros_config import LINK_NAMES
+from sawyer_control.config.default_config import LINK_NAMES
 
 
 """
