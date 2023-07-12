@@ -1,5 +1,4 @@
 import numpy as np
-from gym.spaces import Box
 
 
 # =============================== SCOPE FOR ROBOT CONSTANT ===============================
@@ -67,17 +66,4 @@ EE_POS_UPPER = np.array([1.5, 1.5, 1.5], dtype=np.float64)
 # SAFETY BOX SETTINGS
 SAFETY_FORCE_MAGNITUDE = 5
 SAFETY_FORCE_TEMPERATURE = 5
-
-# overwrite these for your setup
-RESET_SAFETY_BOX_LOWS = np.array([-.2, -0.6, 0.2])
-RESET_SAFETY_BOX_HIGHS = np.array([.9, 0.4, 1])
-RESET_SAFETY_BOX = Box(RESET_SAFETY_BOX_LOWS, RESET_SAFETY_BOX_HIGHS, dtype=np.float32)
-
-TORQUE_SAFETY_BOX_LOWS = np.array([0.3, -0.4, 0.2])
-TORQUE_SAFETY_BOX_HIGHS = np.array([0.7, 0.4, 0.7])
-TORQUE_SAFETY_BOX = Box(TORQUE_SAFETY_BOX_LOWS, TORQUE_SAFETY_BOX_HIGHS, dtype=np.float32)
-
-
-POSITION_SAFETY_BOX = Box(EE_POS_LOWER, EE_POS_UPPER, dtype=np.float32)
-
 
