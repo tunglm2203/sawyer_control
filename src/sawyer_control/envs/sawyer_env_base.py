@@ -15,7 +15,7 @@ from sawyer_control.ros.ros_utils import *
 from sawyer_control.controllers.joint_angle_pd_controller import AnglePDController
 from sawyer_control import PREFIX
 from sawyer_control.core.multitask_env import MultitaskEnv
-from sawyer_control.configs.config import config_dict as config
+from sawyer_control.config import default_config
 
 # Import message types
 from sawyer_control.msg import (
@@ -46,7 +46,6 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             torque_action_scale=1,
             move_speed=0.01,
             rotation_speed=0.01,   # 22.5 in degree
-            config_name = 'base_config',
             fix_goal=False,
             max_speed = 0.05,
             reset_free=False,
@@ -56,7 +55,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             img_row_delta=600, #can range from  0-999
             seed=1,
     ):
-        self.config = config[config_name]
+        self.config = default_config
 
         assert control_type in ACTION_MODE_SUPPORT, f"Action mode: {control_type} does not support."
 
