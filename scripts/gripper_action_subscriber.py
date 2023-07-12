@@ -21,6 +21,7 @@ def listener():
     global gripper
 
     gripper = ii.Gripper('right_gripper')
+    gripper.set_cmd_velocity(3.0)
 
     rospy.spin()
 
