@@ -32,13 +32,18 @@ class AnglePDController(object):
 
         self._imp_ctrl_is_active = True
 
-        for joint in self.joint_names:
-            self._springs[joint] = 30
-            self._damping[joint] = 4
+        default_spring = (10.0, 15.0, 5.0, 5.0, 3.0, 2.0, 1.5)
+        # default_damping = (0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
+        default_damping = (0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2)
+
+        for i, joint in enumerate(self.joint_names):
+            self._springs[joint] = default_spring[i]
+            self._damping[joint] = default_damping[i]
 
     def adjust_springs(self):
-        for joint in list(self._des_angles.keys()):
+        for i, joint in enumerate(list(self._des_angles.keys())):
             t_delta = rospy.get_time() - self.t_release
+            print("Joint {}: time= {}".format(joint, t_delta))
             if t_delta > 0:
                 if t_delta < self.time_to_maxstiffness:
                     self._springs[joint] = t_delta/self.time_to_maxstiffness * self.max_stiffness
@@ -51,7 +56,7 @@ class AnglePDController(object):
         """
         Computes the required torque to be applied using the sawyer's current joint angles and joint velocities
         """
-        self.adjust_springs()
+        # self.adjust_springs()
 
         # disable cuff interaction
         if self._imp_ctrl_is_active:
@@ -63,12 +68,9 @@ class AnglePDController(object):
         # calculate current forces
         for idx, joint in enumerate(self.joint_names):
             # spring portion
-            cmd[joint] = self._springs[joint] * (self._des_angles[joint] -
-                                                 current_joint_angles[idx])
+            cmd[joint] = self._springs[joint] * (self._des_angles[joint] - current_joint_angles[idx])
             # damping portion
             cmd[joint] -= self._damping[joint] * current_joint_velocities[idx]
 
-        cmd = np.array([
-            cmd[joint] for joint in self.joint_names
-        ])
+        cmd = np.array([cmd[joint] for joint in self.joint_names])
         return cmd
