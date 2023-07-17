@@ -16,7 +16,7 @@ EXCEPTION_VERBOSE = False   # Option to print all exception from ROS
 """
 # ========================== ROS clients ==========================
 """
-def request_observation_server(tip_name="right_gripper_tip"):
+def request_observation_server(tip_name="right_hand"):
     """
     Return:
         joint_angles: ordered dict of joint name Keys to angle (rad) Values
@@ -39,7 +39,7 @@ def request_observation_server(tip_name="right_gripper_tip"):
             print(e)
 
 
-def request_ik_server(ee_geometry, current_joint_angles, tip_name="right_gripper_tip"):
+def request_ik_server(ee_geometry, current_joint_angles, tip_name="right_hand"):
     server_name = PREFIX + 'ik'
     rospy.wait_for_service(server_name)
     try:
