@@ -648,9 +648,9 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
 
     def init_rospy(self):
         node_name = PREFIX + 'sawyer_env'
-        arm_joint_torque_pub_name = PREFIX + 'arm_joint_torque_action_pub'
-        arm_joint_velocity_pub_name = PREFIX + 'arm_joint_velocity_action_pub'
-        gripper_pub_name = PREFIX + 'gripper_action_pub'
+        arm_joint_torque_pub_name = PREFIX + 'arm_joint_torque_topic'
+        arm_joint_velocity_pub_name = PREFIX + 'arm_joint_velocity_topic'
+        gripper_pub_name = PREFIX + 'gripper_position_topic'
         rospy.init_node(node_name)
         self.arm_joint_torque_publisher = rospy.Publisher(arm_joint_torque_pub_name, msg_arm_joint_torque_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.arm_joint_velocity_publisher = rospy.Publisher(arm_joint_velocity_pub_name, msg_arm_joint_velocity_action, tcp_nodelay=True, queue_size=self.queue_size)
