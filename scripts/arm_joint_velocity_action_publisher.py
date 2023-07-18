@@ -6,8 +6,8 @@ from sawyer_control import PREFIX
 
 
 def actions_publisher():
-    node_name = PREFIX + 'arm_joint_velocity_action_publisher'
-    pub_name = PREFIX + 'arm_joint_velocity_action_topic'
+    node_name = PREFIX + 'arm_joint_velocity_publisher'
+    pub_name = PREFIX + 'arm_joint_velocity_topic'
     rospy.init_node(node_name, anonymous=True)
 
     global action_pub
