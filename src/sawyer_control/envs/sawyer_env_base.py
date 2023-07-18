@@ -19,7 +19,7 @@ from sawyer_control.config import default_config
 
 # Import message types
 from sawyer_control.msg import (
-    msg_arm_joint_torque_action, msg_arm_joint_velocity_action,
+    msg_arm_joint_torque_action, msg_arm_joint_velocity_action, msg_arm_joint_position_action,
     msg_gripper_action,
 )
 
@@ -650,10 +650,12 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         node_name = PREFIX + 'sawyer_env'
         arm_joint_torque_pub_name = PREFIX + 'arm_joint_torque_topic'
         arm_joint_velocity_pub_name = PREFIX + 'arm_joint_velocity_topic'
+        arm_joint_position_pub_name = PREFIX + 'arm_joint_position_topic'
         gripper_pub_name = PREFIX + 'gripper_position_topic'
         rospy.init_node(node_name)
         self.arm_joint_torque_publisher = rospy.Publisher(arm_joint_torque_pub_name, msg_arm_joint_torque_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.arm_joint_velocity_publisher = rospy.Publisher(arm_joint_velocity_pub_name, msg_arm_joint_velocity_action, tcp_nodelay=True, queue_size=self.queue_size)
+        self.arm_joint_position_publisher = rospy.Publisher(arm_joint_position_pub_name, msg_arm_joint_position_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.gripper_action_publisher = rospy.Publisher(gripper_pub_name, msg_gripper_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.rate = rospy.Rate(self._control_freq)
 
@@ -677,6 +679,10 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         for _ in range(int(self._control_timestep / self._model_timestep)):
             self.arm_joint_velocity_publisher.publish(joint_velocity_action)
             self.rate.sleep()
+
+    def send_joint_position_action(self, joint_position_action, speed=0.3):
+        self.arm_joint_position_publisher.publish(speed, joint_position_action)
+        self.rate.sleep()
 
     def send_gripper_action(self, action):
         self.gripper_action_publisher.publish(action)
