@@ -7,7 +7,7 @@ from sawyer_control import PREFIX
 
 def gripper_action_publisher():
     node_name = PREFIX + 'gripper_action_publisher'
-    pub_name = PREFIX + 'gripper_action_pub'
+    pub_name = PREFIX + 'gripper_position_topic'
     rospy.init_node(node_name, anonymous=True)
 
     global gripper_action_pub

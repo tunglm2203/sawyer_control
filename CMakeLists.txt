@@ -53,6 +53,7 @@ catkin_python_setup()
    FILES
    msg_arm_joint_torque_action.msg
    msg_arm_joint_velocity_action.msg
+   msg_arm_joint_position_action.msg
    msg_gripper_action.msg
  )
 

@@ -7,7 +7,7 @@ from sawyer_control import PREFIX
 
 def actions_publisher():
     node_name = PREFIX + 'arm_joint_velocity_action_publisher'
-    pub_name = PREFIX + 'arm_joint_velocity_action_pub'
+    pub_name = PREFIX + 'arm_joint_velocity_action_topic'
     rospy.init_node(node_name, anonymous=True)
 
     global action_pub
@@ -23,6 +23,6 @@ if __name__ == '__main__':
         actions_publisher()
         rate = rospy.Rate(1)
         rate.sleep()
-        send_action([3, 3, 3, 3, 3, 3, 3])
+        send_action([0, 0, 0, 0, 0, 0, 1])
     except rospy.ROSInterruptException as e:
         print(e)
