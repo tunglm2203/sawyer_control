@@ -2,7 +2,11 @@ import rospy
 
 from sawyer_control.srv import (
     type_observation, type_ik, type_arm_pose_and_jacobian,
-    type_angle_action, type_image, type_gripper
+    type_angle_action, type_image, type_gripper,
+    type_arm_joint_torque_action,
+    type_arm_joint_velocity_action,
+    type_arm_joint_position_action,
+    type_gripper_position
 )
 from sawyer_control.envs.utils import unpack_pose_jacobian_dict
 from sawyer_control import PREFIX
@@ -94,6 +98,74 @@ def request_gripper_server():
         response = request()
         return (response.position, response.velocity, response.force)
 
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+
+def request_arm_joint_set_torque_server(torques):
+    """
+    Send torque command to each joint
+    """
+    server_name = PREFIX + 'arm_joint_set_torque_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_arm_joint_torque_action, persistent=True)
+        response = request(torques)  # Structure of message in srv/type_arm_joint_torque_action.srv
+        return response
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+def request_arm_joint_set_velocity_server(velocities):
+    """
+    Send velocity command to each joint
+    """
+    server_name = PREFIX + 'arm_joint_set_velocity_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_arm_joint_velocity_action, persistent=True)
+        response = request(velocities)  # Structure of message in srv/type_arm_joint_velocity_action.srv
+        return response
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+
+def request_arm_joint_set_position_server(positions, speed, timeout=1.0):
+    """
+    Send position command to each joint
+    """
+    server_name = PREFIX + 'arm_joint_set_position_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_arm_joint_position_action, persistent=True)
+        response = request(positions, speed, timeout)  # Structure of message in srv/type_arm_joint_position_action.srv
+        return response
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+
+def request_arm_joint_move_to_position_server(positions, speed, timeout):
+    server_name = PREFIX + 'arm_joint_move_to_position_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_arm_joint_position_action, persistent=True)
+        response = request(positions, speed, timeout)
+        return response
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+
+def request_arm_gripper_set_position_server(position):
+    server_name = PREFIX + 'arm_gripper_set_position_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_gripper_position, persistent=True)
+        response = request(position)
+        return response
     except rospy.ServiceException as e:
         if EXCEPTION_VERBOSE:
             print(e)

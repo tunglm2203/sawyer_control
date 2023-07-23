@@ -4,6 +4,7 @@ import os
 import abc
 import cv2
 import copy
+import time
 
 from collections import OrderedDict
 import gym
@@ -63,7 +64,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._move_speed = move_speed   # step size of move actions (scale ik action in position)
         self._rotate_speed = rotation_speed # step size of rotate actions (scale rotation in "ik" control mode)
         self._discrete_grip = True      # make gripper action either -1 or 1
-        self._rescale_actions = True    # rescale actions to [-1,1] and normalize to the control range
+        self._rescale_actions = False    # rescale actions to [-1,1] and normalize to the control range
         self._auto_align = True         # automatically (perfectly) align two parts when connected
         self._arms = ["right"]          # For Sawyer
 
@@ -274,80 +275,22 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         Resets robot: initial position, internal variables.
         """
 
-        # def check_ee_pose_close_to_target(current_pose, target_pose):
-        #     diff_pos = np.linalg.norm(target_pose[:3] - current_pose[:3])
-        #     diff_quat = np.linalg.norm(target_pose[3:7] - current_pose[3:7])
-        #     if diff_pos < 0.01 and diff_quat < 0.01:
-        #         return True
-        #     return False
-
         if self.reset_free:
             pass
         else:
             # Move to neutral pose
-            for i in range(self.config.NUM_TRIALS_AT_RESET):
-                current_joint_angles, current_joint_vels, _, _ = request_observation_server()
-                torques = self.AnglePDController._compute_pd_forces(current_joint_angles,
-                                                                    current_joint_vels)
-                # torques = torques * 0.2
-                torques = np.clip(torques, self.config.JOINT_TORQUE_LOWER, self.config.JOINT_TORQUE_UPPER)
-                self.send_joint_torque_action(torques, repeat=False)
-                if self._check_reset_complete():
-                    print("[ENV] Reset finished early after {} trials.".format(i))
+            time_start = time.time()
+            finished, n_trials = False, 1
+            for _ in range(self.config.NUM_TRIALS_AT_RESET):
+                finished = self.move_joint_to_position(self.config.INITIAL_JOINT_ANGLES)
+                self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+                n_trials += 1
+                if finished:
+                    print(f"[ENV] Reset finished in {(time.time() - time_start):.4f} (s).")
                     break
+            if not finished:
+                print(f"[ENV] Reset is not finished after {n_trials} trials.")
 
-            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
-
-            # if self._control_type in ["ik_pos", "ik", "ik_quaternion"]:
-            #     gripper_action = GRIPPER_OPEN_POSITION if self._use_gripper else GRIPPER_CLOSE_POSITION
-            #
-            #     joint_angles_seed = self.config.INITIAL_JOINT_ANGLES  # Using seed_angle is reset angle seems better
-            #     joint_angles_next = request_ik_server(self.ee_geom_at_reset, joint_angles_seed, self._endpoint_name)
-            #
-            #     while True:
-            #         ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
-            #         self.send_angle_action(joint_angles_next, ee_geom_current[:3], self.ee_geom_at_reset[:3])
-            #         self.send_gripper_action(gripper_action)
-            #
-            #         if check_ee_pose_close_to_target(ee_geom_current, self.ee_geom_at_reset):
-            #             break
-            # elif self._control_type in ["torque", "impedance"]:
-            #     for i in range(self.config.RESET_LENGTH):
-            #         current_joint_angles, current_joint_vels, _, _ = request_observation_server()
-            #         torques = self.AnglePDController._compute_pd_forces(current_joint_angles,
-            #                                                             current_joint_vels)
-            #         torques = torques * 0.2
-            #         if self.in_reset:
-            #             torques = np.clip(torques, self.config.RESET_TORQUE_LOW, self.config.RESET_TORQUE_HIGH)
-            #         else:
-            #             torques = np.clip(torques, self.config.JOINT_TORQUE_LOW, self.config.JOINT_TORQUE_HIGH)
-            #         self.send_joint_torque_action(torques)
-            #         self.send_gripper_action(GRIPPER_OPEN_POSITION)
-            #
-            #         if self._check_reset_complete():
-            #             break
-            # else:
-            #     raise NotImplementedError
-
-    def _check_reset_complete(self):
-        # Check whether joint angles are near the predefined reset position
-        joint_angle_current = self.joint_angles
-        joint_angles_neutral = self.AnglePDController._des_angles
-        joint_angles_neutral = np.array([joint_angles_neutral[joint] for joint in self.config.JOINT_NAMES])
-
-        errors = compute_angle_difference(joint_angle_current, joint_angles_neutral)
-        within_desired_reset_pose = (errors < self.config.TOLERANCE_AT_RESET).all()
-
-        # Check whether the arm stops moving
-        _, velocities, _, _ = request_observation_server()
-        velocities = np.abs(velocities)
-
-        # TODO: Move this one to the config
-        VELOCITY_TOLERANCE = .04 * np.ones(self.dof)
-
-        is_pause = (velocities < VELOCITY_TOLERANCE).all()
-        reset_completed = within_desired_reset_pose and is_pause
-        return reset_completed
 
     def _reset_environment(self):
         """
@@ -648,15 +591,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
 
     def init_rospy(self):
         node_name = PREFIX + 'sawyer_env'
-        arm_joint_torque_pub_name = PREFIX + 'arm_joint_torque_topic'
-        arm_joint_velocity_pub_name = PREFIX + 'arm_joint_velocity_topic'
-        arm_joint_position_pub_name = PREFIX + 'arm_joint_position_topic'
-        gripper_pub_name = PREFIX + 'gripper_position_topic'
         rospy.init_node(node_name)
-        self.arm_joint_torque_publisher = rospy.Publisher(arm_joint_torque_pub_name, msg_arm_joint_torque_action, tcp_nodelay=True, queue_size=self.queue_size)
-        self.arm_joint_velocity_publisher = rospy.Publisher(arm_joint_velocity_pub_name, msg_arm_joint_velocity_action, tcp_nodelay=True, queue_size=self.queue_size)
-        self.arm_joint_position_publisher = rospy.Publisher(arm_joint_position_pub_name, msg_arm_joint_position_action, tcp_nodelay=True, queue_size=self.queue_size)
-        self.gripper_action_publisher = rospy.Publisher(gripper_pub_name, msg_gripper_action, tcp_nodelay=True, queue_size=self.queue_size)
         self.rate = rospy.Rate(self._control_freq)
 
     def send_angle_action(self, target_joint_angles, ee_pos_current, ee_pos_next):
@@ -667,26 +602,39 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self.rate.sleep()
 
     def send_joint_torque_action(self, joint_torque_action, repeat=True):
+        response = None
         if repeat:
             for _ in range(int(self._control_timestep / self._model_timestep)):
-                self.arm_joint_torque_publisher.publish(joint_torque_action)
+                response = request_arm_joint_set_torque_server(joint_torque_action)
                 self.rate.sleep()
         else:
-            self.arm_joint_torque_publisher.publish(joint_torque_action)
+            response = request_arm_joint_set_torque_server(joint_torque_action)
             self.rate.sleep()
+        assert response.done
 
     def send_joint_velocity_action(self, joint_velocity_action):
+        response = None
         for _ in range(int(self._control_timestep / self._model_timestep)):
-            self.arm_joint_velocity_publisher.publish(joint_velocity_action)
+            response = request_arm_joint_set_velocity_server(joint_velocity_action)
             self.rate.sleep()
+        assert response.done
 
     def send_joint_position_action(self, joint_position_action, speed=0.3):
-        self.arm_joint_position_publisher.publish(speed, joint_position_action)
+        response = None
+        response = request_arm_joint_set_position_server(joint_position_action, speed)
         self.rate.sleep()
+        assert response.done
+
+    def move_joint_to_position(self, joint_position, speed=0.3, timeout=15.0):
+        response = None
+        response = request_arm_joint_move_to_position_server(joint_position, speed, timeout)
+        return response.done
 
     def send_gripper_action(self, action):
-        self.gripper_action_publisher.publish(action)
+        response = None
+        response = request_arm_gripper_set_position_server(action)
         self.rate.sleep()
+        assert response.done
 
     def crop_image(self, img):
         endcol = self.img_start_col + self.img_col_delta
