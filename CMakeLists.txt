@@ -67,6 +67,10 @@ catkin_python_setup()
    type_image.srv
    type_angle_action.srv
    type_gripper.srv
+   type_arm_joint_torque_action.srv
+   type_arm_joint_velocity_action.srv
+   type_arm_joint_position_action.srv
+   type_gripper_position.srv
  )
 
 ## Generate actions in the 'action' folder

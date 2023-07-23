@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
-    <node pkg="sawyer_control" type="arm_joint_action_subscriber.py" name="arm_subscribers"/>
+    <node pkg="sawyer_control" type="arm_joint_action_server.py" name="arm_servers"/>
     <node pkg="sawyer_control" type="observations_server.py" name="observations" />
     <node pkg="sawyer_control" type="jacobian_server.py" name="jacobians" />
     <node pkg="sawyer_control" type="image_server.py" name="images" />
