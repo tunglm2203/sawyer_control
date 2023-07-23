@@ -5,8 +5,14 @@ import intera_interface
 import copy
 import time
 
-from sawyer_control.srv import type_observation, type_observationResponse
+from sawyer_control.srv import (
+    type_observation, type_observationResponse,
+    type_gripper, type_gripperResponse,
+)
 from sawyer_control import PREFIX
+from sawyer_control.config.default_config import DEFAULT_GRIPPER_VELOCITY, CONTROL_FREQ, USE_GRIPPER
+
+from robot.sawyer_robot import SawyerArm
 
 
 # Note: do not remove input arg "request", it is required for ROS
@@ -45,13 +51,30 @@ def handle_get_observation(request):
     return type_observationResponse(joint_angles, joint_velocities, joint_torques, endpoint_geometry, endpoint_vel)
 
 
+def handle_get_gripper_info(request):
+    # Get current position value in meters (m)
+    gripper_position = arm.gripper.get_position()
+
+    # Get the velocity of gripper in meters per second (m/s)
+    gripper_velocity = arm.gripper.get_cmd_velocity()
+
+    # Get the force sensed by the gripper in estimated Newtons (Current force value in Newton-Meters (N-m))
+    gripper_force = arm.gripper.get_force()
+
+    return type_gripperResponse(gripper_position, gripper_velocity, gripper_force)
+
+
 def observation_server():
-    node_name = PREFIX + 'observation_server'
-    server_name = PREFIX + 'observation'
+    node_name = PREFIX + 'observation_servers'
+    arm_joint_state_server_name = PREFIX + 'arm_joint_state_server'
+    arm_gripper_state_server = PREFIX + 'arm_gripper_state_server'
     rospy.init_node(node_name)
 
     global arm
-    arm = intera_interface.Limb('right')
+    arm = SawyerArm(
+        default_gripper_vel=DEFAULT_GRIPPER_VELOCITY, control_freq=CONTROL_FREQ,
+        use_gripper=USE_GRIPPER
+    )
 
     time.sleep(0.1)     # This is important: waiting Limb() to be initialized completely
     # This is used to initialize tips to get their pose in gazebo, not sure why it solved problem that lacks 'right_hand'
@@ -59,7 +82,9 @@ def observation_server():
     for tip_name in tip_names_to_initialize:
         arm.joint_angles_to_cartesian_pose(arm.joint_angles(), end_point=tip_name)
 
-    server = rospy.Service(server_name, type_observation, handle_get_observation)
+    sv1 = rospy.Service(arm_joint_state_server_name, type_observation, handle_get_observation)
+    sv2 = rospy.Service(arm_gripper_state_server, type_gripper, handle_get_gripper_info)
+
     rospy.spin()
 
 

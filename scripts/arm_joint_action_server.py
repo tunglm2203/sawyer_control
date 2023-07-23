@@ -8,7 +8,7 @@ from sawyer_control.srv import (
     type_arm_joint_position_action, type_arm_joint_position_actionResponse,
     type_gripper_position, type_gripper_positionResponse,
 )
-from sawyer_control.config.default_config import JOINT_NAMES
+from sawyer_control.config.default_config import JOINT_NAMES, DEFAULT_GRIPPER_VELOCITY, CONTROL_FREQ, USE_GRIPPER
 
 from robot.sawyer_robot import SawyerArm
 
@@ -59,7 +59,10 @@ def arm_joint_action_server():
     rospy.init_node(node_name)
 
     global arm
-    arm = SawyerArm()
+    arm = SawyerArm(
+        default_gripper_vel=DEFAULT_GRIPPER_VELOCITY, control_freq=CONTROL_FREQ,
+        use_gripper=USE_GRIPPER
+    )
 
     sv1 = rospy.Service(arm_joint_torque_server_name, type_arm_joint_torque_action, handle_arm_joint_torque)
     sv2 = rospy.Service(arm_joint_velocity_server_name, type_arm_joint_velocity_action, handle_arm_joint_velocity)
