@@ -10,6 +10,8 @@ from sawyer_control.srv import (
 from sawyer_control import PREFIX
 
 
+EXCEPTION_VERBOSE = True
+
 def request_arm_joint_set_torque_server(torques):
     """
     Send torque command to each joint
@@ -21,7 +23,8 @@ def request_arm_joint_set_torque_server(torques):
         response = request(torques)  # Structure of message in srv/type_arm_joint_torque_action.srv
         return response
     except rospy.ServiceException as e:
-        print(e)
+        if EXCEPTION_VERBOSE:
+            print(e)
 
 
 def request_arm_joint_set_velocity_server(velocities):
@@ -35,7 +38,8 @@ def request_arm_joint_set_velocity_server(velocities):
         response = request(velocities)  # Structure of message in srv/type_arm_joint_velocity_action.srv
         return response
     except rospy.ServiceException as e:
-        print(e)
+        if EXCEPTION_VERBOSE:
+            print(e)
 
 
 def request_arm_joint_set_position_server(positions, speed, timeout=1.0):
@@ -49,7 +53,8 @@ def request_arm_joint_set_position_server(positions, speed, timeout=1.0):
         response = request(positions, speed, timeout)  # Structure of message in srv/type_arm_joint_position_action.srv
         return response
     except rospy.ServiceException as e:
-        print(e)
+        if EXCEPTION_VERBOSE:
+            print(e)
 
 
 def request_arm_joint_move_to_position_server(positions, speed, timeout):
@@ -60,7 +65,8 @@ def request_arm_joint_move_to_position_server(positions, speed, timeout):
         response = request(positions, speed, timeout)
         return response
     except rospy.ServiceException as e:
-        print(e)
+        if EXCEPTION_VERBOSE:
+            print(e)
 
 
 def request_arm_gripper_set_position_server(position):
@@ -71,7 +77,8 @@ def request_arm_gripper_set_position_server(position):
         response = request(position)
         return response
     except rospy.ServiceException as e:
-        print(e)
+        if EXCEPTION_VERBOSE:
+            print(e)
 
 
 if __name__ == "__main__":
