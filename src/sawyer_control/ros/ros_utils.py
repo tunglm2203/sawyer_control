@@ -28,7 +28,7 @@ def request_observation_server(tip_name="right_hand"):
         endpoint_geometry: Cartesian endpoint pose {position (xyz), orientation (xyzw)}
         endpoint_velocity: Cartesian endpoint twist {linear (xyz), angular (xyz)}
     """
-    server_name = PREFIX + 'observation'
+    server_name = PREFIX + 'arm_joint_state_server'
     rospy.wait_for_service(server_name)
     try:
         request = rospy.ServiceProxy(server_name, type_observation, persistent=True)
@@ -91,7 +91,7 @@ def request_image_observation_server():
 
 
 def request_gripper_server():
-    server_name = PREFIX + 'gripper'
+    server_name = PREFIX + 'arm_gripper_state_server'
     rospy.wait_for_service(server_name)
     try:
         request = rospy.ServiceProxy(server_name, type_gripper, persistent=True)
