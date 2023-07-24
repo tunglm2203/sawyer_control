@@ -84,6 +84,11 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._model_timestep = 1./self._control_freq    # From Mujoco: Time between 2 forward times of Mujoco sim. (In mujoco is 0.002)
 
         self._action_repeat = 3 if self._control_type in ["ik_pos", "ik", "ik_quaternion"] else 1
+
+        self._max_episode_steps = 500
+        # Set internal params
+        self.joint_torques_scale = 1.0
+        self.joint_velocities_scale = 1.0
         
         # self._endpoint_name = "right_gripper_tip"  # ["right_hand", "right_gripper_tip"]
         self._endpoint_name = "right_hand"  # ["right_hand", "right_gripper_tip"]
@@ -119,14 +124,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._set_observation_space()
         self._set_action_space()
 
-        self._max_episode_steps = 500
-
         self.pose_jacobian_dict = self.get_latest_pose_jacobian_dict()
 
-        # Set internal params
-        self.joint_torques_scale = 1.0
-        self.joint_velocities_scale = 1.0
-        
         self.in_reset = True
 
         if self._endpoint_name == "right_gripper_tip":
@@ -432,6 +431,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         velocities = action[:self.dof].copy()
         if self._rescale_actions:
             velocities = self._scale_action(velocities)
+        velocities = velocities * self.joint_velocities_scale
         print(f"Commanded velocities: {velocities}")
         self.send_joint_velocity_action(velocities)
         self.send_gripper_action(gripper_action)

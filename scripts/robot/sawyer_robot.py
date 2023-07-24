@@ -39,15 +39,22 @@ from intera_core_msgs.srv import (
 from intera_interface import settings
 from intera_interface.robot_params import RobotParams
 
+from sawyer_control.config.default_config import JOINT_NAMES
+
 
 class SawyerArm(Limb):
     def __init__(self, limb="right", synchronous_pub=False, raise_on_error=False,
-                 use_gripper=False, default_gripper_vel=3.0):
+                 use_gripper=False, default_gripper_vel=3.0, control_freq=20):
         super(SawyerArm, self).__init__(limb, synchronous_pub)
         self.raise_on_error = True
 
-        self.gripper = Gripper('right_gripper')
-        self.gripper.set_cmd_velocity(default_gripper_vel)
+        if use_gripper:
+            self.gripper = Gripper('right_gripper')
+            self.gripper.set_cmd_velocity(default_gripper_vel)
+        else:
+            self.gripper = None
+
+        self.rate = rospy.Rate(control_freq)
 
     def set_joint_position_speed(self, speed=0.3):
         """
