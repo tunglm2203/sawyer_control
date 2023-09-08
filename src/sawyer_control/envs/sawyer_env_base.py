@@ -357,7 +357,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         gripper_action = action[-2]
 
         # Flow: Get current position -> compute next position based on delta -> clip if out of range
-        ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
+        ee_geom_current = self._get_endeffector_pose(self._endpoint_name)
         ee_pos_current = ee_geom_current[:3]
         d_pos = action[:3] * self._move_speed
         ee_pos_next = (ee_pos_current + d_pos)
@@ -390,7 +390,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # From (current and next joint) + duration, intermediate waypoints are constructed, then from these waypoints,
             # we compute intermediate velocities, acceleration to send joint_command
             # Reference: see ImpedanceController in src/sawyer_control/controllers/impedance_controller.py
-            ee_geom_current = self._get_endeffector_geom(self._endpoint_name)
+            ee_geom_current = self._get_endeffector_pose(self._endpoint_name)
             ee_pos_current = ee_geom_current[:3]
             if joint_angles_next is not None:
                 self.send_angle_action(joint_angles_next, ee_pos_current, ee_pos_next)
@@ -400,7 +400,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # P controller from target joint positions to velocities
             if joint_angles_next is None:
                 print("[ENV] Warning: IK server did not find solution.")
-                pass
+                raise ValueError
             velocities = self.compute_velocity_control(self.joint_angles, joint_angles_next)
 
             # scale velocity in range
@@ -478,7 +478,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         if target_joint_angles is not None:
             self.commanded_joint_positions = target_joint_angles
         delta = current_joint_angles - self.commanded_joint_positions
-        velocities = -2.0 * delta       # -5.0 * delta
+        velocities = -1.0 * delta       # -5.0 * delta
         velocities = np.clip(velocities, -1.0, 1.0)
         self.commanded_joint_velocities = velocities
         return velocities
@@ -501,6 +501,9 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
     @property
     def joint_velocities(self):
         return self._get_joint_velocities()
+    @property
+    def ee_pose(self):
+        return self._get_endeffector_pose(self._endpoint_name)
 
     def _get_joint_angles(self):
         joint_angles, _, _, _ = request_observation_server(self._endpoint_name)
@@ -510,15 +513,15 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         _, joint_velocities, _, _ = request_observation_server(self._endpoint_name)
         return joint_velocities
 
-    def _get_endeffector_geom(self, tip_name):
+    def _get_endeffector_pose(self, tip_name):
         # Return [(x, y, z), (x, y, z, w)]
         _, _, endpoint_geometry, _ = request_observation_server(tip_name)
         return endpoint_geometry
 
-    def _get_endeffector_pose(self, tip_name):
+    def _get_endeffector_pos(self, tip_name):
         _, _, endpoint_geometry, _ = request_observation_server(tip_name)
-        endpoint_pose = endpoint_geometry[:3]
-        return endpoint_pose
+        endpoint_pos = endpoint_geometry[:3]
+        return endpoint_pos
 
     def _get_endeffector_orientation(self, tip_name):
         _, _, endpoint_geometry, _ = request_observation_server(tip_name)
