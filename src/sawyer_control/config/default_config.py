@@ -62,7 +62,7 @@ JOINT_TORQUE_UPPER = np.array([80.0, 80.0, 40.0, 40.0, 9.0, 9.0, 9.0], dtype=np.
 JOINT_TORQUE_LOWER = -1.0 * JOINT_TORQUE_UPPER
 
 # End-effector limits: user define
-EE_POS_LOWER = np.array([-1.5, -1.5, 0.0], dtype=np.float64)
+EE_POS_LOWER = np.array([-1.5, -1.5, -0.07], dtype=np.float64)
 EE_POS_UPPER = np.array([1.5, 1.5, 1.5], dtype=np.float64)
 
 # SAFETY BOX SETTINGS

@@ -89,6 +89,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         # Set internal params
         self.joint_torques_scale = 1.0
         self.joint_velocities_scale = 1.0
+        self._time_sleep = 0.5
         
         # self._endpoint_name = "right_gripper_tip"  # ["right_hand", "right_gripper_tip"]
         self._endpoint_name = "right_hand"  # ["right_hand", "right_gripper_tip"]
@@ -287,6 +288,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
                 if finished:
                     print(f"[ENV] Reset finished in {(time.time() - time_start):.4f} (s).")
                     break
+            time.sleep(self._time_sleep)
             if not finished:
                 print(f"[ENV] Reset is not finished after {n_trials} trials.")
 
@@ -315,6 +317,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         returns ob, reward, done, info tuple
         """
         self._control(action)
+        time.sleep(self._time_sleep)
         obs = self._get_obs()
 
         # Process done, info in _after_step(), not here
@@ -502,7 +505,10 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
     def joint_velocities(self):
         return self._get_joint_velocities()
     @property
-    def ee_pose(self):
+    def eef_pose(self):
+        return self._get_endeffector_pose(self._endpoint_name)
+    @property
+    def eef_velp(self):
         return self._get_endeffector_pose(self._endpoint_name)
 
     def _get_joint_angles(self):
@@ -517,6 +523,10 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         # Return [(x, y, z), (x, y, z, w)]
         _, _, endpoint_geometry, _ = request_observation_server(tip_name)
         return endpoint_geometry
+
+    def _get_endeffector_vel(self, tip_name):
+        _, _, _, endpoint_vel = request_observation_server(tip_name)
+        return endpoint_vel
 
     def _get_endeffector_pos(self, tip_name):
         _, _, endpoint_geometry, _ = request_observation_server(tip_name)
