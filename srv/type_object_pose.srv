@@ -1,0 +1,11 @@
+# request
+---
+# response
+float64[] pose_table_corner0
+float64[] pose_table_corner1
+float64[] pose_table_corner2
+float64[] pose_table_corner3
+float64[] pose_leg_black
+float64[] pose_leg_blue
+float64[] pose_leg_white
+float64[] pose_leg_pink
