@@ -89,7 +89,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         # Set internal params
         self.joint_torques_scale = 1.0
         self.joint_velocities_scale = 1.0
-        self._time_sleep = 0.5
+        self._time_sleep = 0.2
+        self.user_sensitivity = 1     # Following furniture simulation
         
         # self._endpoint_name = "right_gripper_tip"  # ["right_hand", "right_gripper_tip"]
         self._endpoint_name = "right_hand"  # ["right_hand", "right_gripper_tip"]
@@ -281,6 +282,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # Move to neutral pose
             time_start = time.time()
             finished, n_trials = False, 1
+            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
             for _ in range(self.config.NUM_TRIALS_AT_RESET):
                 finished = self.move_joint_to_position(self.config.INITIAL_JOINT_ANGLES)
                 self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
@@ -365,6 +367,9 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         d_pos = action[:3] * self._move_speed
         ee_pos_next = (ee_pos_current + d_pos)
         ee_pos_next = self._bounded_ee_pos(ee_pos_next)
+        d_pos = ee_pos_next - ee_pos_current
+        d_pos = d_pos * self.user_sensitivity
+        ee_pos_next = ee_pos_current + d_pos
 
         # Flow: Get current orientation -> compute next orientation based on delta
         if self._control_type == "ik":              # action=[d_pos=(xyz), d_rot=(xyz)]

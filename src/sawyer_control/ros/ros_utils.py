@@ -6,7 +6,8 @@ from sawyer_control.srv import (
     type_arm_joint_torque_action,
     type_arm_joint_velocity_action,
     type_arm_joint_position_action,
-    type_gripper_position
+    type_gripper_position,
+    type_object_pose
 )
 from sawyer_control.envs.utils import unpack_pose_jacobian_dict
 from sawyer_control import PREFIX
@@ -166,6 +167,26 @@ def request_arm_gripper_set_position_server(position):
         request = rospy.ServiceProxy(server_name, type_gripper_position, persistent=True)
         response = request(position)
         return response
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+def request_workspace_state_server():
+    server_name = PREFIX + 'object_state_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_object_pose, persistent=True)
+        response = request()  # Structure of message in srv/type_object_pose.srv
+        return (
+            np.array(response.pose_table_corner0),
+            np.array(response.pose_table_corner1),
+            np.array(response.pose_table_corner2),
+            np.array(response.pose_table_corner3),
+            np.array(response.pose_leg_black),
+            np.array(response.pose_leg_blue),
+            np.array(response.pose_leg_white),
+            np.array(response.pose_leg_pink),
+        )
     except rospy.ServiceException as e:
         if EXCEPTION_VERBOSE:
             print(e)
