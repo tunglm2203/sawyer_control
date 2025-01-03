@@ -1,3 +1,4 @@
+import numpy as np
 import rospy
 
 import os
@@ -53,6 +54,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             img_col_delta=300, #can range from  0-999
             img_row_delta=600, #can range from  0-999
             seed=1,
+            time_sleep=0.2,
     ):
         self.config = default_config
 
@@ -89,7 +91,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         # Set internal params
         self.joint_torques_scale = 1.0
         self.joint_velocities_scale = 1.0
-        self._time_sleep = 0.2
+        self._time_sleep = time_sleep
         self.user_sensitivity = 1     # Following furniture simulation
         
         # self._endpoint_name = "right_gripper_tip"  # ["right_hand", "right_gripper_tip"]
@@ -282,10 +284,12 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # Move to neutral pose
             time_start = time.time()
             finished, n_trials = False, 1
-            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+            # self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+            self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
             for _ in range(self.config.NUM_TRIALS_AT_RESET):
                 finished = self.move_joint_to_position(self.config.INITIAL_JOINT_ANGLES)
-                self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+                # self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+                self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
                 n_trials += 1
                 if finished:
                     print(f"[ENV] Reset finished in {(time.time() - time_start):.4f} (s).")
@@ -383,7 +387,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             d_quat = convert_quat(action[3:7] * self._rotate_speed, to="xyzw")   # input is in wxyz, thus need to convert
             ee_ori_next = quat_multiply(ee_ori_current, d_quat)
         elif self._control_type == "ik_pos":
-            ee_ori_next = self.ee_geom_at_reset[3:7]   # already in xyzw
+            # ee_ori_next = self.ee_geom_at_reset[3:7]   # already in xyzw
+            ee_ori_next = ee_geom_current[3:7]  # already in xyzw
         else:
             raise NotImplementedError
 
