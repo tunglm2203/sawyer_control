@@ -1,3 +1,4 @@
+import copy
 from collections import OrderedDict
 import numpy as np
 import gym
@@ -24,7 +25,7 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
 
         self._set_observation_space()
         self._set_action_space()
-        self.current_step = 0
+        self.global_step = 0
 
     def _set_observation_space(self):
         low = np.hstack([self.config.EE_POS_LOWER, -np.inf * np.ones(3),])
@@ -47,39 +48,42 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
 
     def step(self, action):
         done = False
-        self.current_step += 1
+        self.global_step += 1
         assert action.shape == self.action_space.shape
         action = np.clip(action, self.action_space.low, self.action_space.high) # clip to [-1, 1]
 
         sending_action = np.concatenate([action, np.array([-1.0, 0.0])])    # Always close gripper
         raw_obs, _, _, _ = super().step(sending_action)
-        # obs = self.convert_raw_obs_dict_to_array(raw_obs)
-        obs = raw_obs['camera_ob']
-        reward = 0.0
+        obs = self.extract_observation(raw_obs)
 
-        # reward = self.compute_rewards(obs, action)
-        # infos = {"dense_reward": reward}
+        reward = 0.0
         infos = {}
 
-        if self.current_step == self._max_episode_steps:
+        if self.global_step == self._max_episode_steps:
             done = True
 
         return obs, reward, done, infos
 
-    def reset(self, goal=None):
-        self.current_step = 0
+    def reset(self):
+        self.global_step = 0
         raw_obs = super().reset()
-        obs = self.convert_raw_obs_dict_to_array(raw_obs)
-        if goal is not None:
-            self.target_pos = goal
+        obs = self.extract_observation(raw_obs)
         return obs
 
     def compute_rewards(self, observation, action):
         reward = 0
         return reward
 
-    def convert_raw_obs_dict_to_array(self, raw_obs):
+    def extract_observation(self, raw_obs):
+        gripper_pos = raw_obs['robot_ob'][:1]
         pos_xyz = raw_obs['robot_ob'][1:4]
         vel_xyz = raw_obs['robot_ob'][8:11]
-        obs = np.concatenate([pos_xyz, vel_xyz])
+        ee_state = np.concatenate([pos_xyz, vel_xyz, gripper_pos])
+        obs = {
+            "proprioceptive": ee_state,
+            "rgb_image": copy.deepcopy(raw_obs["camera_ob"])
+        }
         return obs
+
+
+
