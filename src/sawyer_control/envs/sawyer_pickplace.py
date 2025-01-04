@@ -5,13 +5,8 @@ gym.logger.set_level(40)
 
 from sawyer_control.envs.sawyer_env_base import SawyerEnvBase
 
-class SawyerReachXYZEnv(SawyerEnvBase):
-    def __init__(self, max_episode_steps=20, noise_target=0.05):
-        self.original_goal = np.array([0.92, 0.28, 0.078])
-        self.target_pos = np.array([0.92, 0.28, 0.078])
-        if noise_target > 0:
-            self.target_pos += np.random.rand(self.target_pos.shape[0]) * noise_target
-        self.target_tolerance = 0.05
+class SawyerPickPlaceXYZEnv(SawyerEnvBase):
+    def __init__(self, max_episode_steps=50):
 
         control_type = 'ik_pos'
         reset_free = False
@@ -22,7 +17,7 @@ class SawyerReachXYZEnv(SawyerEnvBase):
         super().__init__(
             control_type=control_type, reset_free=reset_free,
             move_speed=move_speed, rotation_speed=rotation_speed,
-            max_speed=max_speed
+            max_speed=max_speed, use_visual_ob=True
         )
 
         self.set_max_episode_steps(max_episode_steps)
@@ -58,14 +53,15 @@ class SawyerReachXYZEnv(SawyerEnvBase):
 
         sending_action = np.concatenate([action, np.array([-1.0, 0.0])])    # Always close gripper
         raw_obs, _, _, _ = super().step(sending_action)
-        obs = self.convert_raw_obs_dict_to_array(raw_obs)
+        # obs = self.convert_raw_obs_dict_to_array(raw_obs)
+        obs = raw_obs['camera_ob']
+        reward = 0.0
 
-        _reward = self.compute_rewards(obs, action)
-        infos = {"dense_reward": _reward}
+        # reward = self.compute_rewards(obs, action)
+        # infos = {"dense_reward": reward}
+        infos = {}
 
-        reward = 1.0  if _reward < self.target_tolerance else 0.0
-
-        if reward == 1.0 or self.current_step == self._max_episode_steps:
+        if self.current_step == self._max_episode_steps:
             done = True
 
         return obs, reward, done, infos
@@ -79,10 +75,7 @@ class SawyerReachXYZEnv(SawyerEnvBase):
         return obs
 
     def compute_rewards(self, observation, action):
-        cur_pos_xyz = observation[:3]
-        target = self.target_pos
-
-        reward = np.linalg.norm(target - cur_pos_xyz)
+        reward = 0
         return reward
 
     def convert_raw_obs_dict_to_array(self, raw_obs):
