@@ -27,10 +27,15 @@ if __name__ == "__main__":
         img = request_image_observation()
         if img is not None:
             img = np.array(img)
-            img = img.reshape(480, 480, 3)
+            # import pdb; pdb.set_trace()
+            # img = img.reshape(240, 424, 3)
+            # img = img.reshape(480, 640, 3)
+            # img = img.reshape(480, 480, 3)
+            img = img.reshape(400, 400, 3)
+            #img = img.reshape(720, 1280, 3)
             img = img / 255.
             # img = cv2.resize(img, (84, 84))
             # img = img.reshape(84, 84, 3)
 
             cv2.imshow("CV Image", img)
-            cv2.waitKey(5)
+            cv2.waitKey(1)
