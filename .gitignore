@@ -3,3 +3,5 @@
 .idea/*
 build/
 tags
+
+src/sawyer_control/examples/.ipynb_checkpoints/
