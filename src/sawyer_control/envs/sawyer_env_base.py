@@ -36,8 +36,8 @@ NEW_ACTION_MODE = [
     "joint_velocity",
 ]
 
-CAMERA_WIDTH = 480
-CAMERA_HEIGHT = 480
+CAMERA_WIDTH = 400
+CAMERA_HEIGHT = 400
 
 
 class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
@@ -55,6 +55,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             img_row_delta=600, #can range from  0-999
             seed=1,
             time_sleep=0.2,
+            use_visual_ob=False
     ):
         self.config = default_config
 
@@ -73,7 +74,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._robot_ob = True           # includes agent state in observation
         self._object_ob = False          # includes object pose in observation
         self._object_ob_all = False      # includes all object pose in observation
-        self._visual_ob = False         # includes camera image in observation
+        self._visual_ob = use_visual_ob         # includes camera image in observation
         self._subtask_ob = False        # includes subtask (furniture part id) in observation
         self._segmentation_ob = False   # includes object segmentation for camera
         self._depth_ob = False          # includes depth mapping for camera
@@ -452,7 +453,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
     def _get_obs(self, include_qpos=False):
         state = OrderedDict()
         if self._visual_ob:
-            state["camera_ob"] = None
+            state["camera_ob"] = self.get_image()
 
         if self._segmentation_ob:
             state["segmentation_ob"] = None
@@ -671,8 +672,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             raise Exception("Unable to get image from image_observation server.")
 
         image = np.array(image_flatten).reshape(CAMERA_WIDTH, CAMERA_HEIGHT, 3)
-        image = image[::-1, :, ::-1]
-        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+        # image = image[::-1, :, ::-1]
+        # image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         return image.astype(np.uint8)
 
 

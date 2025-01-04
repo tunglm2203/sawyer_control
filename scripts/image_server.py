@@ -60,7 +60,7 @@ class RealSenseRecorder(object):
         rospy.Subscriber("/camera/color/image_raw", Image_msg, self.store_latest_image)
 
         self.ltob = Latest_observation()
-        self.ltob_aux1 = Latest_observation()
+        # self.ltob_aux1 = Latest_observation()
 
         self.bridge = CvBridge()
 
@@ -71,16 +71,27 @@ class RealSenseRecorder(object):
 
     def store_latest_image(self, data):
         self.ltob.img_msg = data
-        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")  # (480, 640)
+        # Supported resolution:
+        # WxHxC = (1280, 720, 3)
+        # WxHxC = (640, 480, 3)
+        # WxHxC = (424, 240, 3)
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        print(cv_image.dtype)
+        # self.ltob.img_cv2 = cv_image  # (84, 84)
         self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
 
     def crop_highres(self, cv_image):
-        startcol = 70
-        startrow = 0
-        endcol = startcol + 480
-        endrow = startrow + 480
-        cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
-        cv_image = cv2.resize(cv_image, (84, 84))
+        # startcol = 80
+        # startrow = 0
+        # endcol = startcol + 480
+        # endrow = startrow + 480
+        startcol = 120
+        startrow = 40
+        endcol = startcol + 400
+        endrow = startrow + 400
+        # cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        cv_image = cv_image[startrow:endrow, startcol:endcol]
+        # cv_image = cv2.resize(cv_image, (84, 84))
         return cv_image
 
 
@@ -157,9 +168,9 @@ def image_observation_server():
     global cam
     # You should choose the corresponding camera
     # cam = KinectRecorder()
-    # cam = RealSenseRecorder()
+    cam = RealSenseRecorder()
     # cam = LogitechRecorder()
-    cam = KinectSimRecorder()
+    # cam = KinectSimRecorder()
 
     server = rospy.Service(server_name, type_image, handle_get_image_observation)
     rospy.spin()
