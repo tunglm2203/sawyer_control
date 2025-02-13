@@ -1,10 +1,12 @@
 import copy
+import math
 from collections import OrderedDict
 import numpy as np
 import gym
 gym.logger.set_level(40)
 
 from sawyer_control.envs.sawyer_env_base import SawyerEnvBase
+from sawyer_control.envs.utils import quaternion_to_euler
 
 class SawyerPickPlaceXYZEnv(SawyerEnvBase):
     def __init__(self, max_episode_steps=50):
@@ -109,10 +111,10 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         self.global_step = 0
 
     def _set_observation_space(self):
-        low = np.hstack([self.config.EE_POS_LOWER, -np.inf * np.ones(3), np.zeros(1)])
-        high = np.hstack([self.config.EE_POS_UPPER, np.inf * np.ones(3), np.ones(1)])
+        low = np.hstack([self.config.EE_POS_LOWER, -np.inf * np.ones(3), np.array([-np.pi]), np.zeros(1)])
+        high = np.hstack([self.config.EE_POS_UPPER, np.inf * np.ones(3), np.array([np.pi]), np.ones(1)])
         self.observation_space = gym.spaces.Box(
-            low=low, high=high, shape=(3 + 3 + 1, ),    # eef_pos (xyz), eef_vel_pos (xyz), gripper state (open/close)
+            low=low, high=high, shape=(3 + 3 + 1 + 1, ),  # ee_pos (xyz), ee_pos_vel (xyz), yaw (radian), gripper (open/close)
             dtype=np.float32,
         )
 
@@ -160,12 +162,16 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         return reward
 
     def extract_observation(self, raw_obs):
+        # TODO: state: EE's xyz, EE's yaw (radian), Gripper's state
         gripper_pos = raw_obs['robot_ob'][:1]
-        pos_xyz = raw_obs['robot_ob'][1:4]
-        vel_xyz = raw_obs['robot_ob'][8:11]
-        ee_state = np.concatenate([pos_xyz, vel_xyz, gripper_pos])
+        ee_pos_xyz = raw_obs['robot_ob'][1:4]       # xyz
+        ee_rot_quat = raw_obs['robot_ob'][4:8]      # xyzw
+        ee_rot_x, ee_rot_y, ee_rot_z = quaternion_to_euler(ee_rot_quat[0], ee_rot_quat[1], ee_rot_quat[2], ee_rot_quat[3])
+        ee_rot_z = np.array([math.radians(ee_rot_z)])
+        ee_pos_vel_xyz = raw_obs['robot_ob'][8:11]
+        ee_state = np.concatenate([ee_pos_xyz, ee_pos_vel_xyz, ee_rot_z, gripper_pos])
         obs = {
-            "proprioceptive": ee_state,
+            "ee_state": ee_state,
             "rgb_image": copy.deepcopy(raw_obs["camera_ob"])
         }
         return obs
