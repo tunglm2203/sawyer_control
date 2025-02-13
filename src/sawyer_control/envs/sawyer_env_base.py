@@ -57,6 +57,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             time_sleep=0.2,
             use_visual_ob=False,
             use_allinone_observation=False,
+            yaw_only=False,
     ):
         self.config = default_config
 
@@ -148,6 +149,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self.img_row_delta = img_row_delta
 
         self.use_allinone_observation = use_allinone_observation
+        self.yaw_only = yaw_only
 
     def set_max_episode_steps(self, max_episode_steps):
         self._max_episode_steps = max_episode_steps
@@ -393,6 +395,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             d_angle = action[3:6] * self._rotate_speed              # Euler (xyz)
             ee_ori_next = euler_to_quat_mul(d_angle, ee_ori_current)# Quat (wxyz)
             ee_ori_next = convert_quat(ee_ori_next, to="xyzw")      # ee_geom_next requires xyzw order
+            if self.yaw_only:
+                ee_ori_next[2:] *= 0.0
         elif self._control_type == "ik_quaternion": # action=[d_pos=(xyz), d_rot=(wxyz)]
             ee_ori_current = ee_geom_current[3:7]                   # Quat (xyzw)
             d_quat = convert_quat(action[3:7] * self._rotate_speed, to="xyzw")   # input is in wxyz, thus need to convert
