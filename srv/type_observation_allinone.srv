@@ -1,0 +1,13 @@
+# request
+string tip_name
+---
+# response
+float64[] joint_angles
+float64[] joint_velocities
+float64[] joint_torques
+float64[] endpoint_geometry
+float64[] endpoint_velocity
+float64 gripper_position
+float64 gripper_velocity
+float64 gripper_force
+float32[] image
