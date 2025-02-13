@@ -98,7 +98,7 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         super().__init__(
             control_type=control_type, reset_free=reset_free,
             move_speed=move_speed, rotation_speed=rotation_speed,
-            max_speed=max_speed, use_visual_ob=True
+            max_speed=max_speed, use_visual_ob=True, use_allinone_observation=True
         )
 
         self.set_max_episode_steps(max_episode_steps)

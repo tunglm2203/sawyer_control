@@ -55,7 +55,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             img_row_delta=600, #can range from  0-999
             seed=1,
             time_sleep=0.2,
-            use_visual_ob=False
+            use_visual_ob=False,
+            use_allinone_observation=False,
     ):
         self.config = default_config
 
@@ -145,6 +146,8 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self.img_start_row = img_start_row
         self.img_col_delta = img_col_delta
         self.img_row_delta = img_row_delta
+
+        self.use_allinone_observation = use_allinone_observation
 
     def set_max_episode_steps(self, max_episode_steps):
         self._max_episode_steps = max_episode_steps
@@ -261,7 +264,11 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         self._reset_environment()
         self._after_reset()
         self.in_reset = False
-        return self._get_obs()
+
+        if self.use_allinone_observation:
+            return self._get_all_obs()
+        else:
+            return self._get_obs()
 
     def step(self, action):
         """
@@ -325,7 +332,10 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
         """
         self._control(action)
         time.sleep(self._time_sleep)
-        obs = self._get_obs()
+        if self.use_allinone_observation:
+            obs = self._get_all_obs()
+        else:
+            obs = self._get_obs()
 
         # Process done, info in _after_step(), not here
         done = False
@@ -479,6 +489,30 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             robot_states["eef_velr"] = endpoint_geometry[3:6]   # Angular velocity of EE (right_gripper_tip) (xyz)
 
             state["robot_ob"] = np.concatenate([x.ravel() for _, x in robot_states.items()])
+
+        return state
+
+    def _get_all_obs(self, include_qpos=False):
+        assert self._control_type in ["ik"]
+        state = OrderedDict()
+        state["camera_ob"] = self.get_image()
+
+        robot_states = OrderedDict()
+        (joint_angles, joint_velocities, endpoint_geometry, endpoint_velocity,
+         gripper_position, gripper_velocity,
+         robot_image) = request_observation_allinone_server(self._endpoint_name)
+
+        image = np.array(robot_image).reshape(CAMERA_WIDTH, CAMERA_HEIGHT, 3)
+        image = image.astype(np.uint8)
+        state["camera_ob"] = image
+
+        robot_states["gripper_qpos"] = np.array([gripper_position])  # 1-dim
+        robot_states["eef_pos"] = endpoint_geometry[:3]     # Position of gripper (right_gripper_tip) (xyz)
+        robot_states["eef_quat"] = endpoint_geometry[3:7]   # Orientation of gripper (right_gripper_tip) (xyzw)
+        robot_states["eef_velp"] = endpoint_velocity[:3]    # Linear velocity of EE (right_gripper_tip) (xyz)
+        robot_states["eef_velr"] = endpoint_geometry[3:6]   # Angular velocity of EE (right_gripper_tip) (xyz)
+
+        state["robot_ob"] = np.concatenate([x.ravel() for _, x in robot_states.items()])
 
         return state
 

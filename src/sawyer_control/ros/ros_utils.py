@@ -1,7 +1,7 @@
 import rospy
 
 from sawyer_control.srv import (
-    type_observation, type_ik, type_arm_pose_and_jacobian,
+    type_observation, type_observation_allinone, type_ik, type_arm_pose_and_jacobian,
     type_angle_action, type_image, type_gripper,
     type_arm_joint_torque_action,
     type_arm_joint_velocity_action,
@@ -21,6 +21,41 @@ EXCEPTION_VERBOSE = False   # Option to print all exception from ROS
 """
 # ========================== ROS clients ==========================
 """
+def request_observation_allinone_server(tip_name="right_hand"):
+    """
+    Return:
+        joint_angles: ordered dict of joint name Keys to angle (rad) Values
+        joint_velocities: ordered dict of joint name Keys to velocity (rad/s) Values
+        endpoint_geometry: Cartesian endpoint pose {position (xyz), orientation (xyzw)}
+        endpoint_velocity: Cartesian endpoint twist {linear (xyz), angular (xyz)}
+        gripper_
+    """
+    server_name = PREFIX + 'arm_state_allinone_server'
+    rospy.wait_for_service(server_name)
+    try:
+        request = rospy.ServiceProxy(server_name, type_observation_allinone, persistent=True)
+        response = request(tip_name)    # Get observation from observation_server
+
+        joint_angles = np.array(response.joint_angles, dtype=np.float64)
+        joint_velocities = np.array(response.joint_velocities, dtype=np.float64)
+        endpoint_geometry = np.array(response.endpoint_geometry, dtype=np.float64)
+        endpoint_velocity = np.array(response.endpoint_velocity, dtype=np.float64)
+
+        gripper_position = np.array(response.gripper_position)
+        gripper_velocity = np.array(response.gripper_velocity)
+
+        image = np.array(response.image)
+
+        return (
+            joint_angles, joint_velocities, endpoint_geometry, endpoint_velocity,
+            gripper_position, gripper_velocity,
+            image
+        )
+    except rospy.ServiceException as e:
+        if EXCEPTION_VERBOSE:
+            print(e)
+
+
 def request_observation_server(tip_name="right_hand"):
     """
     Return:

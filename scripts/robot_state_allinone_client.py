@@ -15,7 +15,6 @@ def request_allinone_observation_server(tip_name="right_gripper_tip"):
     try:
         request = rospy.ServiceProxy(server_name, type_observation_allinone, persistent=True)
         response = request(tip_name)  # Structure of message in srv/observation.srv
-        rospy.loginfo(response)
         return (
             np.array(response.joint_angles),
             np.array(response.joint_velocities),
