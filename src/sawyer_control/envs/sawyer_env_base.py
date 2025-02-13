@@ -36,8 +36,8 @@ NEW_ACTION_MODE = [
     "joint_velocity",
 ]
 
-CAMERA_WIDTH = 400
-CAMERA_HEIGHT = 400
+CAMERA_WIDTH = 480
+CAMERA_HEIGHT = 480
 
 
 class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
@@ -285,12 +285,12 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
             # Move to neutral pose
             time_start = time.time()
             finished, n_trials = False, 1
-            # self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
-            self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
+            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+            # self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
             for _ in range(self.config.NUM_TRIALS_AT_RESET):
                 finished = self.move_joint_to_position(self.config.INITIAL_JOINT_ANGLES)
-                # self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
-                self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
+                self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+                # self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
                 n_trials += 1
                 if finished:
                     print(f"[ENV] Reset finished in {(time.time() - time_start):.4f} (s).")

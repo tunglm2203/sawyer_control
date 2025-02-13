@@ -76,7 +76,6 @@ class RealSenseRecorder(object):
         # WxHxC = (640, 480, 3)
         # WxHxC = (424, 240, 3)
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        print(cv_image.dtype)
         # self.ltob.img_cv2 = cv_image  # (84, 84)
         self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
 
@@ -85,13 +84,13 @@ class RealSenseRecorder(object):
         # startrow = 0
         # endcol = startcol + 480
         # endrow = startrow + 480
-        startcol = 120
-        startrow = 40
-        endcol = startcol + 400
-        endrow = startrow + 400
+        startcol = 80
+        startrow = 0
+        endcol = startcol + 480
+        endrow = startrow + 480
         # cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
         cv_image = cv_image[startrow:endrow, startcol:endcol]
-        # cv_image = cv2.resize(cv_image, (84, 84))
+        # cv_image = cv2.resize(cv_image, (250, 250))
         return cv_image
 
 
