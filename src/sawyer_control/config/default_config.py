@@ -37,9 +37,12 @@ RIGHT_GRIPPER_TIP_RESET_POSE = [
 ]  # [(xyz), (xyzw)]
 
 # This is used to seed the angles for computing Inverse Kinematic
-INITIAL_JOINT_ANGLES = np.array([-0.28, -0.60, 0.00, 1.86, 0.00, 0.3, 1.57])
+# INITIAL_JOINT_ANGLES = np.array([-0.28, -0.60, 0.00, 1.86, 0.00, 0.3, 1.57])
+# INITIAL_JOINT_ANGLES = np.array([-0.28, -0.60, 0.00, 1.86, 0.00, 0.3, -1.57])
+INITIAL_JOINT_ANGLES = np.array([-0.28930469, -0.60313184,  0.00958203,  1.85056348, -0.00938867,  0.31810352,
+ -1.66642773])
 
-NUM_TRIALS_AT_RESET = 5   # Num of iterations for resetting
+NUM_TRIALS_AT_RESET = 10   # Num of iterations for resetting
 TOLERANCE_AT_RESET = 0.15 * np.ones(ROBOT_DOF)  # Threshold to stop loop at reset
 
 
