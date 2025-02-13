@@ -55,6 +55,7 @@ catkin_python_setup()
    msg_arm_joint_velocity_action.msg
    msg_arm_joint_position_action.msg
    msg_gripper_action.msg
+   msg_gripper_info.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -122,7 +123,7 @@ catkin_package(
 #  LIBRARIES sawyer_control
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
-   CATKIN_DEPENDS message_runtime
+   CATKIN_DEPENDS message_runtime std_msgs
 )
 
 ###########
