@@ -5,3 +5,9 @@ build/
 tags
 
 src/sawyer_control/examples/.ipynb_checkpoints/
+
+src/sawyer_control/examples/
+
+testers/
+
+real_sawyer_robot_description.xml
