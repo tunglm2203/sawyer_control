@@ -1,5 +1,6 @@
 import copy
 import math
+import time
 from collections import OrderedDict
 import numpy as np
 import gym
@@ -89,13 +90,14 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
 
 
 class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
-    def __init__(self, max_episode_steps=50):
+    def __init__(self, task_name='pickup_banana'):
 
         control_type = 'ik'
         reset_free = False
-        move_speed = 0.1
+        move_speed = 0.05
         rotation_speed = 15.0   # max ~ 6-6.5 degree
         max_speed = 0.3
+        self.task_name = task_name
 
         super().__init__(
             control_type=control_type, reset_free=reset_free,
@@ -104,11 +106,25 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
             yaw_only=True
         )
 
-        self.set_max_episode_steps(max_episode_steps)
-
         self._set_observation_space()
         self._set_action_space()
+        self.initialize_param_for_task()
         self.global_step = 0
+
+    def initialize_param_for_task(self):
+        task_params = {
+            'pickup_banana': {
+                'max_episode_steps': 50,
+                'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
+            },
+            'open_drawer': {
+                'max_episode_steps': 50,
+                'initial_joint': np.array([-0.1462168, -0.76034473, -0.16979297, 1.90736523, 0.26566504, 0.45724512, -1.90486621]),
+            },
+        }
+
+        self.max_episode_steps = task_params[self.task_name]['max_episode_steps']
+        self.initial_joint = task_params[self.task_name]['initial_joint']
 
     def _set_observation_space(self):
         low = np.hstack([self.config.EE_POS_LOWER, -np.inf * np.ones(3), np.array([-np.pi]), np.zeros(1)])
@@ -156,6 +172,49 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         raw_obs = super().reset()
         obs = self.extract_observation(raw_obs)
         return obs
+
+    def _reset_robot(self):
+        """
+        Resets robot: initial position, internal variables.
+        """
+
+        if self.reset_free:
+            pass
+        else:
+            # Move to neutral pose
+            time_start = time.time()
+            finished, n_trials = False, 1
+            self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+            # self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
+            cur_ee_pos = self.eef_pose[:3]
+
+            # Move to safe position
+            if cur_ee_pos[0] > 0.8 and cur_ee_pos[1] < -0.12:
+                # Gradually move EE in safe position before reset
+                safe_joint = np.array([-0.066, -0.1034, -0.474, 0.774, 0.5743, 0.9909, -1.7708])  # middle of tray
+                for _ in range(self.config.NUM_TRIALS_AT_RESET):
+                    finished = self.move_joint_to_position(safe_joint, speed=0.1)
+                    if finished:
+                        break
+            elif cur_ee_pos[2] < -0.04:
+                # Gradually move up before reset
+                target_ee_pos = cur_ee_pos.copy()
+                target_ee_pos[2] = 0.02
+                action = np.concatenate([target_ee_pos[:3] - cur_ee_pos[:3], np.array([0, 0, 0, 1, 0])])
+                for _ in range(4):
+                    self._do_ik_step(action)
+
+            for _ in range(self.config.NUM_TRIALS_AT_RESET):
+                finished = self.move_joint_to_position(self.initial_joint, speed=0.1)
+                self.send_gripper_action(self.config.GRIPPER_OPEN_POSITION)
+                # self.send_gripper_action(self.config.GRIPPER_CLOSE_POSITION)
+                n_trials += 1
+                if finished:
+                    print(f"[ENV] Reset finished in {(time.time() - time_start):.4f} (s).")
+                    break
+            time.sleep(self._time_sleep)
+            if not finished:
+                print(f"[ENV] Reset is not finished after {n_trials} trials.")
 
     def compute_rewards(self, observation, action):
         reward = 0

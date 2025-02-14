@@ -42,7 +42,7 @@ RIGHT_GRIPPER_TIP_RESET_POSE = [
 INITIAL_JOINT_ANGLES = np.array([-0.28930469, -0.60313184,  0.00958203,  1.85056348, -0.00938867,  0.31810352,
  -1.66642773])
 
-NUM_TRIALS_AT_RESET = 10   # Num of iterations for resetting
+NUM_TRIALS_AT_RESET = 20   # Num of iterations for resetting
 TOLERANCE_AT_RESET = 0.15 * np.ones(ROBOT_DOF)  # Threshold to stop loop at reset
 
 
@@ -65,8 +65,8 @@ JOINT_TORQUE_UPPER = np.array([80.0, 80.0, 40.0, 40.0, 9.0, 9.0, 9.0], dtype=np.
 JOINT_TORQUE_LOWER = -1.0 * JOINT_TORQUE_UPPER
 
 # End-effector limits: user define
-EE_POS_LOWER = np.array([-1.5, -1.5, -0.07], dtype=np.float64)
-EE_POS_UPPER = np.array([1.5, 1.5, 1.5], dtype=np.float64)
+EE_POS_LOWER = np.array([0.43, -0.145, -0.065], dtype=np.float64)
+EE_POS_UPPER = np.array([0.85, 0.17, 0.15], dtype=np.float64)
 
 # SAFETY BOX SETTINGS
 SAFETY_FORCE_MAGNITUDE = 5
