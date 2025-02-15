@@ -12,9 +12,9 @@ def print_yellow(x):
 def print_help():
     print_yellow("  Teleop Controls:")
 
-    print_yellow("    w, s : move forward/backward")
-    print_yellow("    a, d : move left/right")
-    print_yellow("    z, c : move up/down")
+    print_yellow("    w, s : move forward/backward (in your camera view)")
+    print_yellow("    a, d : move left/right (in your camera view)")
+    print_yellow("    c, z : move up/down (in your camera view)")
     print_yellow("    o, p:  rotate yaw (clockwise/counter-clockwise)")
 
     print_yellow("    space: toggle gripper")
@@ -27,22 +27,23 @@ def show_video(image):
     """
     This shows the video from the camera for a given duration.
     """
-    cv2.imshow("robot img", image)
+    cv2.imshow("Teleoperation Window (Robot image)", image)
 
 
 if __name__ == "__main__":
     _dt = 0.5       # max = 1
     _dr = 0.5       # max = 1
-    keyboard_action_map = {
-        ord("w"): np.array([_dt, 0, 0, 0, 0]),
-        ord("s"): np.array([-_dt, 0, 0, 0, 0]),
+    KEYBOARD_ACTION_MAP = {
+        ord("w"): np.array([-_dt, 0, 0, 0, 0]),
+        ord("s"): np.array([_dt, 0, 0, 0, 0]),
         ord("a"): np.array([0, -_dt, 0, 0, 0]),
         ord("d"): np.array([0, _dt, 0, 0, 0]),
-        ord("z"): np.array([0, 0, _dt, 0, 0]),
-        ord("c"): np.array([0, 0, -_dt, 0, 0]),
+        ord("z"): np.array([0, 0, -_dt, 0, 0]),
+        ord("c"): np.array([0, 0, _dt, 0, 0]),
         ord("o"): np.array([0, 0, 0, _dr, 0]),
         ord("p"): np.array([0, 0, 0, -_dr, 0]),
     }
+    GRIPPER_STATE = {0: 'CLOSE', 1: 'OPEN'}
 
     def _execute_action(env, action):
         obs, reward, done, info = env.step(action)
@@ -54,7 +55,8 @@ if __name__ == "__main__":
         image = obs['rgb_image']
         return image
 
-    env = SawyerPickPlaceXYZYawEnv()
+    # env = SawyerPickPlaceXYZYawEnv(task_name='pickup_banana')
+    env = SawyerPickPlaceXYZYawEnv(task_name='open_drawer')
     image = _execute_reset(env)
     print_help()
     print("Started Teleoperation.")
@@ -75,23 +77,25 @@ if __name__ == "__main__":
         elif key == ord(" "):
             is_open = 1 - is_open
             image = _execute_action(env, np.array([0, 0, 0, 0, is_open]))
-            print("Gripper is now: ")
+            print(f"Gripper is now: {GRIPPER_STATE[is_open]}")
 
         elif key == ord("r"):
             print("Resetting robot...")
             image = _execute_reset(env)
             is_open = 1
-            print("Gripper is now: ")
+            print(f"Gripper is now: {GRIPPER_STATE[is_open]}")
             print_help()
 
         elif key == ord("h"):
             print_help()
 
-        if key in keyboard_action_map:
-            print(f"Key pressed: {key}")
-            action = keyboard_action_map[key]
+        if key in KEYBOARD_ACTION_MAP:
+            action = KEYBOARD_ACTION_MAP[key]
             action[-1] = is_open
             image = _execute_action(env, action)
+
+            print(f"cur_joint: {env.joint_angles}")
+            print(f"cur_ee_pos: {env.eef_pose[:3]}")
 
         show_video(image)
 
