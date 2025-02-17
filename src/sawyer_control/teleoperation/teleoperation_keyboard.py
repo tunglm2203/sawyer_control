@@ -1,9 +1,47 @@
-import numpy as np
+import os
+import sys
+import re
 import cv2
+import copy
+import pickle
+import signal
 import time
-import rospy
+import numpy as np
 
 from sawyer_control.envs.sawyer_pickplace import SawyerPickPlaceXYZYawEnv
+
+
+class PickleLogger:
+    def __init__(self, filename):
+        self.filename = filename
+        self.data = []
+        self.step = 0
+
+    def __call__(self, observation, action, reward, done=0, metadata=None):
+        step = copy.deepcopy(
+            dict(
+                observation=observation,
+                action=action,
+                reward=reward,
+                done=done,
+                metadata=metadata,
+            )
+        )
+        self.data.append(step)
+        self.step += 1
+
+    def make_new_rollout(self, filename=None):
+        if filename is not None:
+            self.filename = filename
+        self.data = []
+        self.step = 0
+
+    def save(self):
+        print(f"Saving rollout to: {self.filename}")
+        with open(self.filename, "wb") as f:
+            pickle.dump(self.data, f)
+        print(f"Done saving.")
+
 
 def print_yellow(x):
     return print("\033[93m {}\033[00m".format(x))
@@ -24,13 +62,34 @@ def print_help():
 
 
 def show_video(image):
-    """
-    This shows the video from the camera for a given duration.
-    """
     cv2.imshow("Teleoperation Window (Robot image)", image)
 
 
+def get_new_episode_idx(task_demo_path):
+    def extract_episode_idx(filename):
+        numbers = re.findall(r'\d+', filename)  # Find all numbers
+        return int(numbers[-1]) if numbers else 0  # Return the last one, or 0 if no number
+
+    all_files = os.listdir(task_demo_path)
+    if len(all_files) > 0:
+        sorted_files = sorted(all_files, key=extract_episode_idx)
+        last_ep_idx = extract_episode_idx(sorted_files[-1])
+        new_ep_idx = int(last_ep_idx) + 1
+    else:
+        new_ep_idx = 1
+
+    return new_ep_idx
+
+
 if __name__ == "__main__":
+    def signal_handler(sig, frame):
+        print("\nCtrl+C detected. Exiting Teleoperation program.")
+        sys.exit(0)  # Exit cleanly
+
+    # Register SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    """ Definition for user's hyperparameters and constants """
     _dt = 0.5       # max = 1
     _dr = 0.5       # max = 1
     KEYBOARD_ACTION_MAP = {
@@ -45,21 +104,51 @@ if __name__ == "__main__":
     }
     GRIPPER_STATE = {0: 'CLOSE', 1: 'OPEN'}
 
+
+    """ Select tasks """
+    task_name = 'pickup_banana'
+    # task_name = 'open_drawer'
+
+    env = SawyerPickPlaceXYZYawEnv(task_name=task_name)
+
+
+    """ Utilities """
     def _execute_action(env, action):
         obs, reward, done, info = env.step(action)
         image = obs['rgb_image']
+
+        logger(obs, action, 0.0, int(done), None)
+        print(f"Global step: {env.global_step}")
         return image
+
 
     def _execute_reset(env):
+        null_action = np.array([0, 0, 0, 0, 1.0])
         obs = env.reset()
         image = obs['rgb_image']
+
+        logger(obs, null_action, 0.0, 0, None)
+        print(f"Global step: {env.global_step}")
         return image
 
-    # env = SawyerPickPlaceXYZYawEnv(task_name='pickup_banana')
-    env = SawyerPickPlaceXYZYawEnv(task_name='open_drawer')
+
+    """ Logger to store rollout data """
+    root_demo_path = '/home/tung/workspace/hrl_bench/preference_rl/sawyer_dataset'
+    task_demo_path = os.path.join(root_demo_path, task_name)
+    if not os.path.exists(task_demo_path):
+        os.makedirs(task_demo_path)
+
+    filename_template = "{task_name}_episode_{ep_idx}.pkl"
+    new_ep_idx = get_new_episode_idx(task_demo_path)
+    filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
+    logger = PickleLogger(filename=filename)
+
+
+    """ Start Teleoperation """
     image = _execute_reset(env)
     print_help()
     print("Started Teleoperation.")
+    print(f"Current log's file: {logger.filename}")
 
     running = True
     is_open = 1     # The gripper is open at initial time
@@ -82,22 +171,34 @@ if __name__ == "__main__":
         elif key == ord("r"):
             print("Resetting robot...")
             image = _execute_reset(env)
+            new_ep_idx = get_new_episode_idx(task_demo_path)
+            new_filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
+            logger.make_new_rollout(filename=new_filename)
             is_open = 1
             print(f"Gripper is now: {GRIPPER_STATE[is_open]}")
             print_help()
+            print(f"Current log's file: {logger.filename}")
 
         elif key == ord("h"):
             print_help()
+
+        elif key == ord("m"):
+            logger.save()
+            new_ep_idx = get_new_episode_idx(task_demo_path)
+            new_filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
+            logger.make_new_rollout(filename=new_filename)
+            print(f"New log's file: {logger.filename}")
 
         if key in KEYBOARD_ACTION_MAP:
             action = KEYBOARD_ACTION_MAP[key]
             action[-1] = is_open
             image = _execute_action(env, action)
 
-            print(f"cur_joint: {env.joint_angles}")
-            print(f"cur_ee_pos: {env.eef_pose[:3]}")
+            # print(f"cur_joint: {env.joint_angles}")
+            # print(f"cur_ee_pos: {env.eef_pose[:3]}")
 
-        show_video(image)
+        if image is not None:
+            show_video(image)
 
     cv2.destroyAllWindows()
     print("Teleoperation ended.")

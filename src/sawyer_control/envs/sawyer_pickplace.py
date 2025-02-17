@@ -94,15 +94,14 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
 
         control_type = 'ik'
         reset_free = False
-        move_speed = 0.05
+        move_speed = 0.06   # 0.05, 0.1
         rotation_speed = 15.0   # max ~ 6-6.5 degree
-        max_speed = 0.3
         self.task_name = task_name
 
         super().__init__(
             control_type=control_type, reset_free=reset_free,
             move_speed=move_speed, rotation_speed=rotation_speed,
-            max_speed=max_speed, use_visual_ob=True, use_allinone_observation=True,
+            use_visual_ob=True, use_allinone_observation=True,
             yaw_only=True
         )
 
@@ -162,7 +161,7 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         reward = 0.0
         infos = {}
 
-        if self.global_step == self._max_episode_steps:
+        if self.global_step >= self._max_episode_steps:
             done = True
 
         return obs, reward, done, infos

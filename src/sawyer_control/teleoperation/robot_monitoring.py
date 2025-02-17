@@ -37,7 +37,7 @@ def request_image_overview():
 if __name__ == "__main__":
 
     display_height = 480
-    display_width = 850
+    display_width = 848
 
     while True:
         img_observation = request_image_observation()
@@ -50,17 +50,17 @@ if __name__ == "__main__":
         y_offset = (display_height - 480) // 2  # (720 - 480) / 2 = 120
         x_offset = (display_width - 480) // 2  # (1280 - 480) / 2 = 400
         background[y_offset:y_offset + 480, x_offset:x_offset + 480] = img_observation
-        image_left = img_observation / 255.
+        image_left = background / 255.
 
 
         img_overview = np.array(img_overview)
-        img_overview = img_overview.reshape(720, 1280, 3)
+        img_overview = img_overview.reshape(480, 848, 3)
         img_overview = cv2.resize(img_overview, (display_width, display_height))
         image_right = img_overview / 255.
 
         img = np.hstack([image_left, image_right])
 
-        cv2.imshow("Robot Monitoring (left: image observation, right: image overview)", img)
+        cv2.imshow("Robot Monitoring (LEFT: Image Observation, RIGHT: Image Overview)", img)
         key = cv2.waitKey(40) & 0xFF
         if key == ord("q"):
             break
