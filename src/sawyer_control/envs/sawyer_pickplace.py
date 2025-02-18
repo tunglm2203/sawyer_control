@@ -90,7 +90,7 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
 
 
 class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
-    def __init__(self, task_name='pickup_banana'):
+    def __init__(self, task_name='sawyer-pickup-banana-v0'):
 
         control_type = 'ik'
         reset_free = False
@@ -112,11 +112,11 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
 
     def initialize_param_for_task(self):
         task_params = {
-            'pickup_banana': {
+            'sawyer-pickup-banana-v0': {
                 'max_episode_steps': 50,
                 'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
             },
-            'open_drawer': {
+            'sawyer-drawer-open-v0': {
                 'max_episode_steps': 50,
                 'initial_joint': np.array([-0.1462168, -0.76034473, -0.16979297, 1.90736523, 0.26566504, 0.45724512, -1.90486621]),
             },
