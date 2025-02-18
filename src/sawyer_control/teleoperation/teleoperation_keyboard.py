@@ -131,6 +131,13 @@ if __name__ == "__main__":
         print(f"Global step: {env.global_step}")
         return image
 
+    def _get_current_state(env):
+        raw_obs = env._get_all_obs()
+        image = raw_obs['camera_ob']
+        gripper_pos = raw_obs['robot_ob'][:1]
+        gripper_state = 1.0 if gripper_pos >= 0.04 else 0.0
+        return image, gripper_state
+
 
     """ Logger to store rollout data """
     root_demo_path = '/home/tung/workspace/hrl_bench/preference_rl/sawyer_dataset'
@@ -145,13 +152,13 @@ if __name__ == "__main__":
 
 
     """ Start Teleoperation """
-    image = _execute_reset(env)
+    image, cur_gripper_state = _get_current_state(env)
     print_help()
     print("Started Teleoperation.")
     print(f"Current log's file: {logger.filename}")
 
     running = True
-    is_open = 1     # The gripper is open at initial time
+    is_open = cur_gripper_state     # The gripper is open at initial time
     while running:
         # Check for key press
         key = cv2.waitKey(40) & 0xFF

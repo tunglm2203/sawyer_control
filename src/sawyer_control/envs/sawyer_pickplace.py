@@ -92,6 +92,9 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
 class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
     def __init__(self, task_name='sawyer-pickup-banana-v0'):
 
+        """
+        Do not change these following parameters
+        """
         control_type = 'ik'
         reset_free = False
         move_speed = 0.06   # 0.05, 0.1
