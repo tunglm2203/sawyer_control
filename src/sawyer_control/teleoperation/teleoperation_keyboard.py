@@ -117,7 +117,7 @@ if __name__ == "__main__":
         obs, reward, done, info = env.step(action)
         image = obs['rgb_image']
 
-        logger(obs, action, 0.0, int(done), None)
+        logger(obs, action, 0.0, 0, None)
         print(f"Global step: {env.global_step}")
         return image
 
