@@ -9,15 +9,20 @@ import numpy as np
 
 def main(args):
 
+    print(f'Load: {args.file}')
     with open(args.file, 'rb') as f:
         data = pickle.load(f)
 
     n_steps = len(data)
 
     for i in range(n_steps):
+        print(f"step: {i}")
         cv2.imshow('image observation', data[i]['observation']['rgb_image'])
-        cv2.waitKey(1)
-        time.sleep(0.05)
+        # cv2.waitKey(1)
+        key = cv2.waitKey(40) & 0xFF
+        if key == ord("q"):
+            breakpoint()
+        time.sleep(0.4)
 
 
 if __name__ == "__main__":
