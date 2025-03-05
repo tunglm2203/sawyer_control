@@ -653,7 +653,7 @@ class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):
 
     def init_rospy(self):
         node_name = PREFIX + 'sawyer_env'
-        rospy.init_node(node_name)
+        rospy.init_node(node_name, anonymous=True)
         self.rate = rospy.Rate(self._control_freq)
 
     def send_angle_action(self, target_joint_angles, ee_pos_current, ee_pos_next):
