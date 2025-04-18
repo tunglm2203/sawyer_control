@@ -7,9 +7,24 @@ import pickle
 import signal
 import time
 import numpy as np
+from moviepy.editor import ImageSequenceClip
 
 from sawyer_control.envs.sawyer_pickplace import SawyerPickPlaceXYZYawEnv
 
+
+def save_numpy_as_gif(array, filename, fps=20, scale=1.0):
+    # ensure that the file has the .gif extension
+    fname, _ = os.path.splitext(filename)
+    filename = fname + '.gif'
+
+    # copy into the color dimension if the images are black and white
+    if array.ndim == 3:
+        array = array[..., np.newaxis] * np.ones(3)
+
+    # make the moviepy clip
+    clip = ImageSequenceClip(list(array), fps=fps).resize(scale)
+    clip.write_gif(filename, fps=fps)
+    return clip
 
 class PickleLogger:
     def __init__(self, filename):
@@ -57,6 +72,8 @@ def print_help():
 
     print_yellow("    space: toggle gripper")
     print_yellow("    r: reset robot")
+    print_yellow("    m: to save demonstration")
+    print_yellow("    g: to save gif")
     print_yellow("    h: help")
     print_yellow("    q: quit")
 
@@ -106,8 +123,9 @@ if __name__ == "__main__":
 
 
     """ Select tasks """
-    task_name = 'sawyer-pickup-banana-v0'
-    # task_name = 'sawyer-drawer-open-v0'
+    # task_name = 'sawyer-pickup-banana-v0'
+    # task_name = 'sawyer-pickup-banana-v1'
+    task_name = 'sawyer-drawer-open-v0'
 
     env = SawyerPickPlaceXYZYawEnv(task_name=task_name)
 
@@ -159,6 +177,7 @@ if __name__ == "__main__":
 
     running = True
     is_open = cur_gripper_state     # The gripper is open at initial time
+    gif_images = []
     while running:
         # Check for key press
         key = cv2.waitKey(40) & 0xFF
@@ -174,6 +193,7 @@ if __name__ == "__main__":
             is_open = 1 - is_open
             image = _execute_action(env, np.array([0, 0, 0, 0, is_open]))
             print(f"Gripper is now: {GRIPPER_STATE[is_open]}")
+            gif_images.append(copy.deepcopy(image))
 
         elif key == ord("r"):
             print("Resetting robot...")
@@ -185,6 +205,7 @@ if __name__ == "__main__":
             print(f"Gripper is now: {GRIPPER_STATE[is_open]}")
             print_help()
             print(f"Current log's file: {logger.filename}")
+            gif_images.append(copy.deepcopy(image))
 
         elif key == ord("h"):
             print_help()
@@ -196,10 +217,16 @@ if __name__ == "__main__":
             logger.make_new_rollout(filename=new_filename)
             print(f"New log's file: {logger.filename}")
 
+        elif key == ord("g"):
+            if len(gif_images) > 0:
+                save_numpy_as_gif(np.array(gif_images)[:, :, :, ::-1], 'cur_episode.gif')
+            gif_images = []
+
         if key in KEYBOARD_ACTION_MAP:
             action = KEYBOARD_ACTION_MAP[key]
             action[-1] = is_open
             image = _execute_action(env, action)
+            gif_images.append(copy.deepcopy(image))
 
             # print(f"cur_joint: {env.joint_angles}")
             # print(f"cur_ee_pos: {env.eef_pose[:3]}")
