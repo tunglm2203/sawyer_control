@@ -123,9 +123,9 @@ if __name__ == "__main__":
 
 
     """ Select tasks """
-    # task_name = 'sawyer-pickup-banana-v0'
-    # task_name = 'sawyer-pickup-banana-v1'
-    task_name = 'sawyer-drawer-open-v0'
+    #task_name = 'sawyer-pickup-banana-v0'
+    task_name = 'sawyer-pickup-banana-v1'
+    # task_name = 'sawyer-drawer-open-v0'
 
     env = SawyerPickPlaceXYZYawEnv(task_name=task_name)
 

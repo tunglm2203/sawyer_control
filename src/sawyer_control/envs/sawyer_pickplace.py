@@ -116,16 +116,20 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
     def initialize_param_for_task(self):
         task_params = {
             'sawyer-pickup-banana-v0': {
-                'max_episode_steps': 50,
+                'max_episode_steps': 40,
+                'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
+            },
+            'sawyer-pickup-banana-v1': {
+                'max_episode_steps': 90,
                 'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
             },
             'sawyer-drawer-open-v0': {
-                'max_episode_steps': 50,
+                'max_episode_steps': 60,
                 'initial_joint': np.array([-0.1462168, -0.76034473, -0.16979297, 1.90736523, 0.26566504, 0.45724512, -1.90486621]),
             },
         }
 
-        self.max_episode_steps = task_params[self.task_name]['max_episode_steps']
+        self._max_episode_steps = task_params[self.task_name]['max_episode_steps']
         self.initial_joint = task_params[self.task_name]['initial_joint']
 
     def _set_observation_space(self):
