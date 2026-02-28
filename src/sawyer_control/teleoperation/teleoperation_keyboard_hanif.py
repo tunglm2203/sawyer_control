@@ -6,9 +6,11 @@ import copy
 import pickle
 import signal
 import time
+import rospy
 import numpy as np
+from os.path import join
+from geometry_msgs.msg import PoseStamped
 from moviepy.editor import ImageSequenceClip
-
 from sawyer_control.envs.sawyer_pickplace import SawyerPickPlaceXYZYawEnv
 
 
@@ -27,8 +29,9 @@ def save_numpy_as_gif(array, filename, fps=20, scale=1.0):
     return clip
 
 class PickleLogger:
-    def __init__(self, filename):
+    def __init__(self, filename, trial_name):
         self.filename = filename
+        self.trial_name = trial_name
         self.data = []
         self.step = 0
 
@@ -52,10 +55,72 @@ class PickleLogger:
         self.step = 0
 
     def save(self):
-        print(f"Saving rollout to: {self.filename}")
-        with open(self.filename, "wb") as f:
+        print(f"Saving rollout to: {join(self.trial_name, self.filename)}")
+        with open(join(self.trial_name, self.filename), "wb") as f:
             pickle.dump(self.data, f)
         print(f"Done saving.")
+
+class StatesLogger:
+    def __init__(self):
+        # 1. Create a dictionary to hold the freshest poses
+        self.latest_poses = {}
+        
+        # 2. Set up a persistent subscriber that runs in the background
+        self.pose_sub = rospy.Subscriber(
+            "apriltag/3d_pose", 
+            PoseStamped, 
+            self._pose_callback
+        )
+        rospy.sleep(1.0) 
+
+    def _pose_callback(self, msg):
+        """
+        This runs automatically every time a new message hits the topic.
+        It simply overwrites the old position with the newest one.
+        """
+        self.latest_poses[msg.header.frame_id] = np.array([
+            msg.pose.position.x,
+            msg.pose.position.y,
+            msg.pose.position.z
+        ])
+        # print(self.latest_poses)
+
+    def _get_current_gripper_state(self, env):
+        raw_obs = env._get_all_obs()
+        gripper_pos = raw_obs['robot_ob'][:1]
+        gripper_state = 1.0 if gripper_pos >= 0.04 else 0.0
+        return gripper_state
+
+
+    def _get_current_state_space(self, env, target_object):
+        """
+        Reads instantly from the dictionary without any loops or waiting.
+        """
+        # Safety check: Ensure the tags have been detected at least once
+        if "gripper" not in self.latest_poses or target_object not in self.latest_poses:
+            rospy.logerr(f"Cannot find tags! Current known tags: {list(self.latest_poses.keys())}")
+            # You might want to pause or return a zero-array here 
+            # to prevent the RL agent from crashing if a tag is occluded.
+            
+        # Instantly grab the latest arrays
+        gripper_pos = self.latest_poses["gripper"]
+        target_pos = self.latest_poses[target_object]
+        
+        # Calculate relative distance
+        rel_distance = target_pos - gripper_pos
+        
+        # Get the current gripper state (assuming this is defined elsewhere in your class)
+        gripper_state = self._get_current_gripper_state(env)
+        
+        # Concatenate everything into the 10-D NumPy array
+        state_space = np.concatenate([
+            gripper_pos,
+            target_pos,
+            rel_distance,
+            [gripper_state]
+        ]).astype(np.float32)
+        
+        return state_space
 
 
 def print_yellow(x):
@@ -127,29 +192,46 @@ if __name__ == "__main__":
 
     """ Select tasks """
     # task_name = 'sawyer-pickup-banana-v2'
-    task_name = 'sawyer-drawer-open-v0'
-    # task_name = 'sawyer-pick-place-cube-v0'
+    # task_name = 'sawyer-open-drawer-v0'
+    # task_name = 'sawyer-pick-lift-banana-v0'
+    task_name = 'sawyer-move-box-v0'
+
+    """ Select trial name """
+    trial_name = 'successful_trajectories'
+
+    """ Select target object """
+    if task_name == 'sawyer-open-drawer-v0':
+        target_object = "upper_drawer"
+    elif task_name == 'sawyer-move-box-v0':
+        target_object = "red_box"
+    elif task_name == 'sawyer-pick-lift-banana-v0':
+        target_object = "banana" 
 
     env = SawyerPickPlaceXYZYawEnv(task_name=task_name)
+    states_logger = StatesLogger()
 
 
     """ Utilities """
     def _execute_action(env, action):
-        obs, reward, done, info = env.step(action)
-        print(f"Current EE height: {obs['ee_state'][2]}")
+        cur_tag_state_space = states_logger._get_current_state_space(env, target_object)
+        # breakpoint()
+        obs, reward, done, info = env.step(action, cur_tag_state_space) # , cur_tag_state_space)
+        # print(f"Current EE height: {obs['ee_state'][2]}")
         image = obs['rgb_image']
 
-        logger(obs, action, 0.0, 0, None)
-        print(f"Global step: {env.global_step}")
+        logger(cur_tag_state_space, action, reward, done, None)
+        # print(f"Global step: {env.global_step}")
+        print(f"Reward Value: {reward}")
         return image
 
 
     def _execute_reset(env):
+        cur_tag_state_space = states_logger._get_current_state_space(env, target_object)
         null_action = np.array([0, 0, 0, 0, 1.0])
         obs = env.reset()
         image = obs['rgb_image']
 
-        logger(obs, null_action, 0.0, 0, None)
+        logger(cur_tag_state_space, null_action, 0.0, 0, None)
         print(f"Global step: {env.global_step}")
         return image
 
@@ -157,24 +239,25 @@ if __name__ == "__main__":
         raw_obs = env._get_all_obs()
         image = raw_obs['camera_ob']
         gripper_pos = raw_obs['robot_ob'][:1]
-        print(raw_obs)
-        print(raw_obs['robot_ob'])
-        print(gripper_pos)
         gripper_state = 1.0 if gripper_pos >= 0.04 else 0.0
         return image, gripper_state
 
-
     """ Logger to store rollout data """
     root_demo_path = '/home/tung/workspace/rlhf_bench/iql-pytorch-sawyer/datasets'
-    task_demo_path = os.path.join(root_demo_path, task_name)
+    task_demo_path = os.path.join(root_demo_path, task_name, trial_name)
     if not os.path.exists(task_demo_path):
         os.makedirs(task_demo_path)
+
+    # # """ Start Fresh """
+    # for filename in os.listdir(task_demo_path):
+    #     file_path = os.path.join(task_demo_path, filename)
+    #     if os.path.isfile(file_path):
+    #         os.remove(file_path)
 
     filename_template = "{task_name}_episode_{ep_idx}.pkl"
     new_ep_idx = get_new_episode_idx(task_demo_path)
     filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
-    logger = PickleLogger(filename=filename)
-
+    logger = PickleLogger(filename=filename, trial_name = trial_name)
 
     """ Start Teleoperation """
     image, cur_gripper_state = _get_current_state(env)
@@ -222,7 +305,7 @@ if __name__ == "__main__":
             new_ep_idx = get_new_episode_idx(task_demo_path)
             new_filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
             logger.make_new_rollout(filename=new_filename)
-            print(f"New log's file: {logger.filename}")
+            print(f"New log's file: {logger.filename}\n")
 
         elif key == ord("g"):
             if len(gif_images) > 0:
@@ -230,14 +313,16 @@ if __name__ == "__main__":
             gif_images = []
 
         if key in KEYBOARD_ACTION_MAP:
+            # print(f"cur_joint: {env.joint_angles}")
+            # print(f"cur_ee_pos: {env.eef_pose[:3]}")
+            print(f"cur_tag_state_space: {states_logger._get_current_state_space(env, 'red_box')}")
             action = KEYBOARD_ACTION_MAP[key]
             action[-1] = is_open
+            print(f"executed_action: {action}")
             image = _execute_action(env, action)
             gif_images.append(copy.deepcopy(image))
-
-            print(f"cur_joint: {env.joint_angles}")
-            print(f"cur_ee_pos: {env.eef_pose[:3]}")
-
+            print("="*10)
+            
         if image is not None:
             show_video(image)
 

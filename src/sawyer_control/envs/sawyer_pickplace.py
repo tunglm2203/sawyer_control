@@ -88,7 +88,6 @@ class SawyerPickPlaceXYZEnv(SawyerEnvBase):
         }
         return obs
 
-
 class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
     def __init__(self, task_name='sawyer-pickup-banana-v0'):
 
@@ -115,17 +114,29 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
 
     def initialize_param_for_task(self):
         task_params = {
-            'sawyer-pickup-banana-v0': {
+            # 'sawyer-pickup-banana-v0': {
+            #     'max_episode_steps': 40,
+            #     'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
+            # },
+            # 'sawyer-pickup-banana-v1': {
+            #     'max_episode_steps': 90,
+            #     'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
+            # },
+            'sawyer-pick-lift-banana-v0': {
                 'max_episode_steps': 40,
                 'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
             },
-            'sawyer-pickup-banana-v1': {
-                'max_episode_steps': 90,
-                'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
-            },
-            'sawyer-drawer-open-v0': {
+            'sawyer-open-drawer-v0': {
                 'max_episode_steps': 60,
                 'initial_joint': np.array([-0.1462168, -0.76034473, -0.16979297, 1.90736523, 0.26566504, 0.45724512, -1.90486621]),
+            },
+            'sawyer-pick-lift-cube-v0': {
+                'max_episode_steps': 80,
+                'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
+            },
+            'sawyer-move-box-v0': {
+                'max_episode_steps': 80,
+                'initial_joint': self.config.INITIAL_JOINT_ANGLES.copy(),
             },
         }
 
@@ -151,7 +162,7 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
     def _get_observation(self):
         return None
 
-    def step(self, action):
+    def step(self, action, cur_state=None):
         done = False
         self.global_step += 1
         assert action.shape == self.action_space.shape
@@ -165,8 +176,18 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
         raw_obs, _, _, _ = super().step(sending_action)
         obs = self.extract_observation(raw_obs)
 
-        reward = 0.0
         infos = {}
+
+        if self.task_name == 'sawyer-pick-lift-banana-v0':
+            reward, is_success = self.compute_rewards_pick_lift_object(cur_state, action)
+        elif self.task_name == 'sawyer-open-drawer-v0':
+            reward, is_success = self.compute_rewards_open_drawer(cur_state, action)
+        elif self.task_name == 'sawyer-move-box-v0':
+            reward, is_success = self.compute_rewards_move_box(cur_state, action)
+            
+        if is_success:
+            done = True
+            return obs, reward, done, infos
 
         if self.global_step >= self._max_episode_steps:
             done = True
@@ -222,9 +243,216 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
             if not finished:
                 print(f"[ENV] Reset is not finished after {n_trials} trials.")
 
-    def compute_rewards(self, observation, action):
-        reward = 0
-        return reward
+    # def compute_rewards(self, observation, action):
+    #     reward = 0
+    #     return reward
+
+    def compute_rewards_pick_lift_object(self, state, action):
+        """
+        Calculates the multi-stage reward for the DDPG picking task.
+        
+        State array structure (10-D): 
+        [0:3] Gripper (x,y,z)
+        [3:6] Target Object (x,y,z)
+        [6:9] Relative Distance (dx,dy,dz)
+        [9]   Gripper Status (1.0 = closed, 0.0 = open)
+        
+        Action array structure (4-D):
+        [0:3] Velocities for x, y, z
+        [3]   Gripper command
+        """
+        if state is None:
+            return 0.0
+
+        # 1. Unpack the relevant state variables for readability
+        target_pos = state[3:6]
+        rel_distance = state[6:9]
+        gripper_status = state[9]
+        
+        # 2. Define Hyperparameters (Weights and Thresholds)
+        # These will likely need tuning during your Gazebo training runs
+        w1, w2, w3, w4 = 1.0, 2.0, 50.0, 80.0
+        alpha = 5.0
+        
+        # 3. Calculate Euclidean distance between gripper and object
+        d = np.linalg.norm(rel_distance)
+        print(d, gripper_status)
+        
+        # --- R_approach ---
+        # Creates a smooth gradient encouraging the gripper to move closer.
+        # When d is large, reward is near 0. When d is 0, reward is w1.
+        r_approach = w1 * (1.0 - np.tanh(alpha * d))
+        
+        # --- R_grasp ---
+        # The agent gets a bonus if it is physically close enough and the gripper is closed.
+        distance_threshold = 0.17  # 5 cm tolerance
+        is_grasped = True if (d < distance_threshold and gripper_status < 0.5) else False
+        r_grasp = w2 if is_grasped else 0.0
+        
+        # --- R_lift ---
+        # The table is z=0. The box center starts slightly above 0 (e.g., 0.015m).
+        # We only reward lifting if it goes above a certain threshold, AND it must be grasped.
+        z_o = target_pos[2]
+        z_start_threshold = -0.02
+        
+        if is_grasped:
+            r_lift = w3 * max(0.0, z_start_threshold - z_o)
+        else:
+            r_lift = 0.0
+            
+        # --- R_success ---
+        # Target height to reach (e.g., 30 cm above the table origin)
+        z_target = -0.12
+        
+        # To satisfy the "remain stationary" requirement, we check the magnitude of the 
+        # Cartesian velocity actions sent by the Actor network.
+        action_magnitude = np.linalg.norm(action[0:3])
+        velocity_threshold = 0.1  # Must be moving very slowly
+        
+        is_success = False
+        r_success = 0.0
+        
+        if (z_o <= z_target) and is_grasped and (action_magnitude < velocity_threshold):
+            r_success = w4
+            is_success = True
+            
+        # 4. Total Reward Calculation
+        total_reward = r_approach + r_grasp + r_lift + r_success
+        print(f"r_approach | r_grasp | r_lift | r_success : {r_approach} | {r_grasp} | {r_lift} | {r_success}")
+        return total_reward, is_success
+    
+    def compute_rewards_move_box(self, state, action):
+        """
+        Calculates the multi-stage reward for the DDPG drawer opening task.
+        
+        State array structure (10-D): 
+        [0:3] Gripper (x,y,z)
+        [3:6] Target Object (x,y,z) -> The 'upper_drawer' tag
+        [6:9] Relative Distance (dx,dy,dz)
+        [9]   Gripper Status (1.0 = closed, 0.0 = open)
+        
+        Action array structure (4-D):
+        [0:3] Velocities for x, y, z
+        [3]   Gripper command
+        """
+        if state is None:
+            return 0.0, False
+
+        # 1. Unpack the relevant state variables
+        target_pos = state[3:6]
+        rel_distance = state[6:9]
+        gripper_status = state[9]
+        
+        # 2. Define Hyperparameters
+        w1, w2, w3, w4 = 1.0, 2.0, 50.0, 80.0
+        alpha = 5.0
+        
+        # 3. Calculate Euclidean distance between gripper and drawer handle
+        d = np.linalg.norm(rel_distance)
+        
+        # --- R_approach ---
+        # Encourage the gripper to move to the drawer handle
+        r_approach = w1 * (1.0 - np.tanh(alpha * d))
+        
+        # --- R_pull ---
+        # Determine the axis the drawer pulls out on. 
+        # Assuming it pulls out towards the robot along the positive X-axis:
+        y_o = target_pos[1]
+        
+        # The X-coordinate of the drawer when it is fully closed
+        # (You can tune this based on your previous rostopic echo: ~ -0.104)
+        y_closed_threshold = 0.14
+        # Reward increases as the drawer's X coordinate increases (moves toward robot)
+        r_pull = w3 * max(0.0, y_o - y_closed_threshold)
+        is_engaged = True if r_pull > 0 else False
+            
+        # --- R_success ---
+        # The X-coordinate indicating the drawer is fully open
+        y_target = 0.21  # Adjust this to the actual X-coordinate when fully pulled out
+        
+        action_magnitude = np.linalg.norm(action[0:3])
+        velocity_threshold = 0.1  
+        
+        is_success = False
+        r_success = 0.0
+        
+        # Success if drawer reaches target X, gripper remains open/engaged, and robot stops moving
+        if (y_o >= y_target) and is_engaged and (action_magnitude < velocity_threshold):
+            r_success = w4
+            is_success = True
+        
+        # 4. Total Reward Calculation
+        total_reward = r_approach  + r_pull + r_success
+        
+        print(f"r_approach | r_pull | r_success : {r_approach} | {r_pull} | {r_success}")
+        return total_reward, is_success
+
+
+    def compute_rewards_open_drawer(self, state, action):
+        """
+        Calculates the multi-stage reward for the DDPG drawer opening task.
+        
+        State array structure (10-D): 
+        [0:3] Gripper (x,y,z)
+        [3:6] Target Object (x,y,z) -> The 'upper_drawer' tag
+        [6:9] Relative Distance (dx,dy,dz)
+        [9]   Gripper Status (1.0 = closed, 0.0 = open)
+        
+        Action array structure (4-D):
+        [0:3] Velocities for x, y, z
+        [3]   Gripper command
+        """
+        if state is None:
+            return 0.0, False
+
+        # 1. Unpack the relevant state variables
+        target_pos = state[3:6]
+        rel_distance = state[6:9]
+        gripper_status = state[9]
+        
+        # 2. Define Hyperparameters
+        w1, w2, w3, w4 = 1.0, 2.0, 50.0, 80.0
+        alpha = 5.0
+        
+        # 3. Calculate Euclidean distance between gripper and drawer handle
+        d = np.linalg.norm(rel_distance)
+        
+        # --- R_approach ---
+        # Encourage the gripper to move to the drawer handle
+        r_approach = w1 * (1.0 - np.tanh(alpha * d))
+        
+        # --- R_pull ---
+        # Determine the axis the drawer pulls out on. 
+        # Assuming it pulls out towards the robot along the positive X-axis:
+        y_o = target_pos[1]
+        
+        # The X-coordinate of the drawer when it is fully closed
+        # (You can tune this based on your previous rostopic echo: ~ -0.104)
+        y_closed_threshold = 0.03
+        # Reward increases as the drawer's X coordinate increases (moves toward robot)
+        r_pull = w3 * max(0.0, y_o - y_closed_threshold)
+        is_engaged = True if r_pull > 0 else False
+            
+        # --- R_success ---
+        # The X-coordinate indicating the drawer is fully open
+        y_target = 0.104  # Adjust this to the actual X-coordinate when fully pulled out
+        
+        action_magnitude = np.linalg.norm(action[0:3])
+        velocity_threshold = 0.1  
+        
+        is_success = False
+        r_success = 0.0
+        
+        # Success if drawer reaches target X, gripper remains open/engaged, and robot stops moving
+        if (y_o >= y_target) and is_engaged and (action_magnitude < velocity_threshold):
+            r_success = w4
+            is_success = True
+        
+        # 4. Total Reward Calculation
+        total_reward = r_approach  + r_pull + r_success
+        
+        print(f"r_approach | r_pull | r_success : {r_approach} | {r_pull} | {r_success}")
+        return total_reward, is_success
 
     def extract_observation(self, raw_obs):
         # TODO: state: EE's xyz, EE's yaw (radian), Gripper's state
@@ -240,3 +468,4 @@ class SawyerPickPlaceXYZYawEnv(SawyerEnvBase):
             "rgb_image": copy.deepcopy(raw_obs["camera_ob"])
         }
         return obs
+

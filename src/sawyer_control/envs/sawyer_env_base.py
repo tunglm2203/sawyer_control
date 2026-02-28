@@ -36,8 +36,8 @@ NEW_ACTION_MODE = [
     "joint_velocity",
 ]
 
-CAMERA_WIDTH = 480
-CAMERA_HEIGHT = 480
+CAMERA_WIDTH = 720
+CAMERA_HEIGHT = 720
 
 
 class SawyerEnvBase(gym.Env, metaclass=abc.ABCMeta):

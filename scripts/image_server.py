@@ -80,17 +80,30 @@ class RealSenseRecorder(object):
         self.ltob.img_cv2 = self.crop_highres(cv_image)  # (84, 84)
 
     def crop_highres(self, cv_image):
+        # # startcol = 80
+        # # startrow = 0
+        # # endcol = startcol + 480
+        # # endrow = startrow + 480
         # startcol = 80
         # startrow = 0
         # endcol = startcol + 480
         # endrow = startrow + 480
-        startcol = 80
+        # # cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        # cv_image = cv_image[startrow:endrow, startcol:endcol]
+        # # cv_image = cv2.resize(cv_image, (250, 250))
+        
+        # For a 1280x720 input, to get a center 720x720 crop:
+        # startcol = (Width - TargetWidth) / 2 = (1280 - 720) / 2 = 280
+        startcol = 280 
         startrow = 0
-        endcol = startcol + 480
-        endrow = startrow + 480
-        # cv_image = copy.deepcopy(cv_image[startrow:endrow, startcol:endcol])
+        endcol = startcol + 720
+        endrow = startrow + 720
+        
         cv_image = cv_image[startrow:endrow, startcol:endcol]
-        # cv_image = cv2.resize(cv_image, (250, 250))
+        
+        # If your neural network requires a specific size (like 84x84), 
+        # you MUST add the resize line back in:
+        # cv_image = cv2.resize(cv_image, (84, 84), interpolation=cv2.INTER_AREA)
         return cv_image
 
 
@@ -154,7 +167,7 @@ class KinectSimRecorder(object):
 
 def handle_get_image_observation(request):
     img = cam.ltob.img_cv2
-    img = np.array(img)
+    img = np.array(img, dtype=float)
     image = img.flatten().tolist()
     return type_imageResponse(image)
 

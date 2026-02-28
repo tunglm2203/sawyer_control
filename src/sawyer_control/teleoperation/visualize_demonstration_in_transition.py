@@ -13,15 +13,22 @@ def main(args):
     with open(args.file, 'rb') as f:
         data = pickle.load(f)
 
-    n_steps = len(data)
+    ep_len = len(data)
 
-    for i in range(n_steps):
-        print(f"step: {i}: { data[i]['observation']['ee_state']}")
-        cv2.imshow('image observation', data[i]['observation']['rgb_image'])
+    for i in range(ep_len - 1):
+        print(f"step: {i}")
+        img_t = data[i]['observation']['rgb_image']
+        img_tp1 = data[i + 1]['observation']['rgb_image']
+        img_transition = np.zeros((480, 480 * 2 + 10, 3), dtype=np.uint8)
+        img_transition[:, :480, :] = img_t
+        img_transition[:, -480:, :] = img_tp1
+        cv2.imshow("image transition (t and t+1)", img_transition)
         # cv2.waitKey(1)
         key = cv2.waitKey(40) & 0xFF
         if key == ord("q"):
             breakpoint()
+        # if i >= 26:
+        #     breakpoint()
         time.sleep(0.1)
 
 
