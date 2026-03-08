@@ -9,6 +9,7 @@ import time
 import rospy
 import numpy as np
 from os.path import join
+from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from moviepy.editor import ImageSequenceClip
 from sawyer_control.envs.sawyer_pickplace import SawyerPickPlaceXYZYawEnv
@@ -165,6 +166,7 @@ def get_new_episode_idx(task_demo_path):
 
 
 if __name__ == "__main__":
+    pub = rospy.Publisher('/activate_record_video', String, queue_size=10)
     def signal_handler(sig, frame):
         print("\nCtrl+C detected. Exiting Teleoperation program.")
         sys.exit(0)  # Exit cleanly
@@ -193,8 +195,9 @@ if __name__ == "__main__":
     """ Select tasks """
     # task_name = 'sawyer-pickup-banana-v2'
     # task_name = 'sawyer-open-drawer-v0'
-    # task_name = 'sawyer-pick-lift-banana-v0'
-    task_name = 'sawyer-move-box-v0'
+    task_name = 'sawyer-pick-lift-banana-v0'
+    # task_name = 'sawyer-move-box-v0'
+    print(task_name)
 
     """ Select trial name """
     trial_name = 'successful_trajectories'
@@ -206,6 +209,9 @@ if __name__ == "__main__":
         target_object = "red_box"
     elif task_name == 'sawyer-pick-lift-banana-v0':
         target_object = "banana" 
+
+    output_dir = f"/home/tung/workspace/rlhf_bench/iql-pytorch-sawyer/output_video/{task_name}/demonstration/{trial_name}"
+    os.makedirs(output_dir,exist_ok=True)
 
     env = SawyerPickPlaceXYZYawEnv(task_name=task_name)
     states_logger = StatesLogger()
@@ -268,6 +274,7 @@ if __name__ == "__main__":
     running = True
     is_open = cur_gripper_state     # The gripper is open at initial time
     gif_images = []
+    ep = 0
     while running:
         # Check for key press
         key = cv2.waitKey(40) & 0xFF
@@ -287,6 +294,7 @@ if __name__ == "__main__":
 
         elif key == ord("r"):
             print("Resetting robot...")
+            pub.publish("0")
             image = _execute_reset(env)
             new_ep_idx = get_new_episode_idx(task_demo_path)
             new_filename = os.path.join(task_demo_path, filename_template.format(task_name=task_name, ep_idx=new_ep_idx))
@@ -296,6 +304,8 @@ if __name__ == "__main__":
             print_help()
             print(f"Current log's file: {logger.filename}")
             gif_images.append(copy.deepcopy(image))
+            pub.publish(os.path.join(output_dir,f"episode_{ep+1}.mp4"))
+            ep += 1
 
         elif key == ord("h"):
             print_help()
@@ -315,11 +325,14 @@ if __name__ == "__main__":
         if key in KEYBOARD_ACTION_MAP:
             # print(f"cur_joint: {env.joint_angles}")
             # print(f"cur_ee_pos: {env.eef_pose[:3]}")
-            print(f"cur_tag_state_space: {states_logger._get_current_state_space(env, 'red_box')}")
+            print(f"cur_tag_state_space: {states_logger._get_current_state_space(env, target_object)}")
             action = KEYBOARD_ACTION_MAP[key]
             action[-1] = is_open
             print(f"executed_action: {action}")
+            time_begin = time.time()
             image = _execute_action(env, action)
+            time_duration = time.time() - time_begin
+            print(f"Step duration {time_duration}")
             gif_images.append(copy.deepcopy(image))
             print("="*10)
             
